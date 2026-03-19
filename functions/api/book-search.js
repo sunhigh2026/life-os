@@ -42,41 +42,38 @@ async function searchByIsbn(isbn) {
   return searchByTitle(isbn);
 }
 
+// 検索クエリを正規化: 全角スペース→半角、助詞→スペースでキーワード分割
+function normalizeQuery(q) {
+  return q
+    .replace(/\u3000/g, ' ')           // 全角スペース → 半角
+    .replace(/[はがのをにでと]/g, ' ')   // 助詞をスペースに
+    .replace(/\s+/g, ' ')              // 連続スペースを1つに
+    .trim();
+}
+
 // タイトル検索: 国立国会図書館 OpenSearch API（無料・APIキー不要・無制限）
 async function searchByTitle(q) {
-  const debug = {};
   try {
+    const normalized = normalizeQuery(q);
     // OpenSearch (RSS): title= でタイトル検索、dpid=iss-ndl-opac で図書に限定
-    const ndlUrl = `https://ndlsearch.ndl.go.jp/api/opensearch?title=${encodeURIComponent(q)}&cnt=10&dpid=iss-ndl-opac`;
-    debug.ndlUrl = ndlUrl;
+    const ndlUrl = `https://ndlsearch.ndl.go.jp/api/opensearch?title=${encodeURIComponent(normalized)}&cnt=10&dpid=iss-ndl-opac`;
 
     const res = await fetch(ndlUrl, {
       headers: { 'User-Agent': 'LifeOS/1.0 (personal-app)' },
     });
-    debug.ndlStatus = res.status;
-
     if (!res.ok) throw new Error(`NDL HTTP ${res.status}`);
 
     const xml = await res.text();
-    debug.ndlResponseLength = xml.length;
-    debug.ndlSnippet = xml.slice(0, 500);
-
     const books = parseNdlRss(xml);
-    debug.ndlParsedCount = books.length;
 
     if (books.length > 0) {
-      return json({ books, _debug: debug });
+      return json({ books });
     }
 
     // NDL で見つからない場合は Open Library にフォールバック
-    const olResult = await searchOpenLibrary(q);
-    const olData = JSON.parse(await olResult.clone().text());
-    debug.openLibraryCount = olData.books?.length || 0;
-
-    return json({ books: olData.books || [], _debug: debug });
+    return searchOpenLibrary(q);
   } catch (e) {
-    debug.error = e.message;
-    return json({ books: [], _debug: debug }, 502);
+    return json({ error: 'book search failed', detail: e.message }, 502);
   }
 }
 
