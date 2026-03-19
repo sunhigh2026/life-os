@@ -284,20 +284,66 @@ function renderTodos(todos) {
     const overdue = t.due && t.due < today;
     const priority = t.priority || 'mid';
     const priorityLabel = { high: '高', mid: '普通', low: '低' }[priority];
+    const td = encodeURIComponent(JSON.stringify(t));
     return `
-      <div class="todo-item" onclick="completeTodo('${t.id}', this)">
-        <div class="todo-check"></div>
-        <div class="todo-content">
+      <div class="todo-item">
+        <div class="todo-check" onclick="completeTodo('${t.id}', this.closest('.todo-item'))"></div>
+        <div class="todo-content" onclick="completeTodo('${t.id}', this.closest('.todo-item'))">
           <div class="todo-text">${escHtml(t.text)}</div>
           <div class="todo-meta ${overdue ? 'overdue' : ''}">
             ${t.due ? `📅 ${t.due}${overdue ? ' 期限超過！' : ''}` : ''}
             ${t.tag ? ` #${t.tag}` : ''}
           </div>
         </div>
-        <div class="priority-badge ${priority}">${priorityLabel}</div>
+        <div class="priority-badge ${priority}" style="cursor:pointer;" onclick="openTodoEdit(decodeURIComponent('${td}'))">${priorityLabel} ✏️</div>
       </div>
     `;
   }).join('');
+}
+
+// ==============================
+// Todo編集モーダル
+// ==============================
+function openTodoEdit(todoJson) {
+  const t = JSON.parse(todoJson);
+  document.getElementById('todoEditId').value = t.id;
+  document.getElementById('todoEditText').value = t.text || '';
+  document.getElementById('todoEditTag').value = t.tag || '';
+  document.getElementById('todoEditDue').value = t.due || '';
+  document.querySelectorAll('.todo-edit-priority').forEach((btn) => {
+    btn.classList.toggle('selected', btn.dataset.priority === (t.priority || 'mid'));
+  });
+  document.getElementById('todoEditModal').style.display = 'flex';
+}
+
+function closeTodoEdit() {
+  document.getElementById('todoEditModal').style.display = 'none';
+}
+
+async function saveTodoEdit() {
+  const id = document.getElementById('todoEditId').value;
+  const text = document.getElementById('todoEditText').value.trim();
+  const tag = document.getElementById('todoEditTag').value.trim() || null;
+  const due = document.getElementById('todoEditDue').value || null;
+  const priority = document.querySelector('.todo-edit-priority.selected')?.dataset.priority || 'mid';
+
+  try {
+    await apiFetch('/api/todo', {
+      method: 'PUT',
+      body: JSON.stringify({ id, text, tag, due, priority }),
+    });
+    showToast('✅ 更新しました');
+    closeTodoEdit();
+    loadDashboard();
+  } catch (e) {
+    showToast(`エラー: ${e.message}`);
+  }
+}
+
+function selectTodoEditPriority(p) {
+  document.querySelectorAll('.todo-edit-priority').forEach((btn) => {
+    btn.classList.toggle('selected', btn.dataset.priority === p);
+  });
 }
 
 async function completeTodo(id, el) {

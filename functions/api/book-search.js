@@ -18,7 +18,9 @@ export async function onRequestGet({ request, env }) {
   try {
     const apiKey = env.GOOGLE_BOOKS_API_KEY ? `&key=${env.GOOGLE_BOOKS_API_KEY}` : '';
     const apiUrl = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=10${apiKey}`;
-    const res = await fetch(apiUrl);
+    const res = await fetch(apiUrl, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; LifeOS/1.0)' },
+    });
     const data = await res.json();
 
     if (!data.items) return json({ books: [] });

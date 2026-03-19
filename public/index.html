@@ -120,6 +120,29 @@
   </a>
 </nav>
 
+<!-- Todo編集モーダル -->
+<div id="todoEditModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:400;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:16px;padding:20px;width:90%;max-width:480px;display:flex;flex-direction:column;gap:12px;">
+    <div style="font-weight:600;font-size:15px;">ToDoを編集</div>
+    <input type="hidden" id="todoEditId">
+    <input type="text" id="todoEditText" placeholder="タスク内容">
+    <input type="text" id="todoEditTag" placeholder="タグ（任意）">
+    <div style="display:flex;gap:6px;align-items:center;">
+      <span style="font-size:12px;color:var(--muted);">期限:</span>
+      <input type="date" id="todoEditDue" style="flex:1;">
+    </div>
+    <div style="display:flex;gap:6px;">
+      <button class="priority-btn todo-edit-priority selected" data-priority="high" onclick="selectTodoEditPriority('high')">🔴 高</button>
+      <button class="priority-btn todo-edit-priority selected" data-priority="mid" onclick="selectTodoEditPriority('mid')">🟡 普通</button>
+      <button class="priority-btn todo-edit-priority" data-priority="low" onclick="selectTodoEditPriority('low')">🔵 低</button>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn-submit todo-mode" onclick="saveTodoEdit()">保存</button>
+      <button class="btn-submit" onclick="closeTodoEdit()" style="background:#aaa;">キャンセル</button>
+    </div>
+  </div>
+</div>
+
 <!-- トースト -->
 <div id="toast"></div>
 

@@ -57,7 +57,7 @@ export async function onRequestPost({ request, env }) {
 // PUT /api/todo — ステータス更新・期限変更・優先度変更
 export async function onRequestPut({ request, env }) {
   const body = await request.json();
-  const { id, status, due, priority } = body;
+  const { id, status, due, priority, text, tag } = body;
 
   if (!id) {
     return json({ error: 'id required' }, 400);
@@ -83,6 +83,14 @@ export async function onRequestPut({ request, env }) {
   if (priority !== undefined) {
     updates.push('priority = ?');
     values.push(priority);
+  }
+  if (text !== undefined) {
+    updates.push('text = ?');
+    values.push(text);
+  }
+  if (tag !== undefined) {
+    updates.push('tag = ?');
+    values.push(tag);
   }
 
   if (updates.length === 0) {
