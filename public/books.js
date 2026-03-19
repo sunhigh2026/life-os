@@ -7,7 +7,7 @@ const AUTH_KEY = 'hidapia2026';
 // 状態
 // ==============================
 let selectedBook = null;
-let selectedMedium = 'book';
+let selectedMedium = 'owned';
 let selectedStatus = 'done';
 let selectedRating = 0;
 let html5Qr = null;
@@ -68,7 +68,7 @@ function renderSearchResults(books) {
   el.innerHTML = books.map((b, i) => `
     <div class="book-card" onclick="selectBook(${i})">
       ${b.cover_url
-        ? `<img class="book-cover" src="${b.cover_url}" alt="">`
+        ? `<img class="book-cover" src="${b.cover_url}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="book-cover-placeholder" style="display:none;">📖</div>`
         : `<div class="book-cover-placeholder">📖</div>`}
       <div class="book-info">
         <div class="book-title">${escHtml(b.title)}</div>
@@ -146,7 +146,7 @@ function showRegisterForm() {
   }
 
   // リセット
-  selectMedium('book');
+  selectMedium('owned');
   selectStatus('done');
   selectStar(0);
   document.getElementById('noteInput').value = '';
