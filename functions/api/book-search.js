@@ -115,7 +115,7 @@ function parseNdlRss(xml) {
       author,
       publisher,
       published_date,
-      cover_url: isbn ? `https://cover.openbd.jp/${isbn}.jpg` : null,
+      cover_url: isbn ? `https://books.google.com/books/content?vid=isbn:${isbn}&printsec=frontcover&img=1&zoom=1` : null,
     });
   }
 

@@ -318,6 +318,19 @@ function selectEditStar(n) {
   });
 }
 
+async function deleteBook() {
+  const id = document.getElementById('editBookId').value;
+  if (!confirm('この本を削除しますか？')) return;
+  try {
+    await apiFetch(`/api/book?id=${id}`, { method: 'DELETE' });
+    showToast('削除しました');
+    closeBookEdit();
+    loadRecentBooks();
+  } catch (e) {
+    showToast(`エラー: ${e.message}`);
+  }
+}
+
 async function saveBookEdit() {
   const id = document.getElementById('editBookId').value;
   const note = document.getElementById('editBookNote').value.trim() || null;
