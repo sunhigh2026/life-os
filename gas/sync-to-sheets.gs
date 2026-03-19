@@ -1,16 +1,17 @@
 // ============================================================
 // Life OS → Google Sheets 定期エクスポート
 // ============================================================
-// 使い方:
-//   1. スプレッドシート → 拡張機能 → Apps Script を開く
-//   2. このコードを貼り付けて保存
-//   3. LIFE_OS_URL を自分の Cloudflare Pages URL に変更
-//   4. 「setupTrigger」を一度だけ実行してトリガーを設定
-//   5. 以降は毎日 AM6:00 に自動同期されます
+// 【スクリプトプロパティの設定】
+//   GAS エディタ → プロジェクトの設定 → スクリプトプロパティ に以下を追加:
+//     LIFE_OS_URL  = https://life-os-7pj.pages.dev
+//     AUTH_KEY     = hidapia2026
+//     SHEET_ID     = 1TJ6Q6tHzxz7fN4PxbMD7fWMVIW6eyoxKYiyeXKgz35w
+//
+// 【使い方】
+//   1. スクリプトプロパティを設定（上記）
+//   2. setupTrigger を一度だけ実行 → 毎日AM6:00に自動同期
+//   3. 手動同期はメニュー「🗂 Life OS → 今すぐ同期」またはsyncAll実行
 // ============================================================
-
-const LIFE_OS_URL = 'https://life-os.pages.dev'; // ★ご自分のURL に変更
-const AUTH_KEY    = 'hidapia2026';                // ★変更した場合は合わせる
 
 // シート名の定義
 const SHEET_NAMES = {
@@ -19,33 +20,55 @@ const SHEET_NAMES = {
   books:   '読書',
 };
 
-// 書き出すカラムの定義（DBの全列）
+// 書き出すカラム（DBの実際の列名）
 const COLUMNS = {
   entries: ['id', 'datetime', 'mood', 'tag', 'text', 'created_at'],
   todos:   ['id', 'text', 'tag', 'priority', 'status', 'due', 'done_at', 'created_at'],
-  books:   ['id', 'isbn', 'title', 'author', 'publisher', 'published_date',
-            'status', 'rating', 'start_date', 'end_date', 'memo', 'cover_url', 'created_at'],
+  books:   ['id', 'datetime', 'isbn', 'title', 'author', 'cover_url',
+            'medium', 'rating', 'status', 'note'],
 };
 
-// カラムの日本語ヘッダー
+// 日本語ヘッダー
 const HEADER_JA = {
-  id: 'ID', datetime: '日時', mood: '気分', tag: 'タグ', text: '内容', created_at: '作成日時',
-  text_todo: 'タスク', priority: '優先度', status: 'ステータス', due: '期限', done_at: '完了日時',
-  isbn: 'ISBN', title: 'タイトル', author: '著者', publisher: '出版社',
-  published_date: '出版年', rating: '評価', start_date: '読み始め',
-  end_date: '読み終わり', memo: 'メモ', cover_url: 'カバー画像URL',
+  id: 'ID', datetime: '日時', mood: '気分', tag: 'タグ', text: '内容',
+  created_at: '作成日時', priority: '優先度', status: 'ステータス',
+  due: '期限', done_at: '完了日時', isbn: 'ISBN', title: 'タイトル',
+  author: '著者', cover_url: 'カバーURL', medium: '媒体',
+  rating: '評価', note: 'メモ・感想',
 };
+
+// ============================================================
+// 設定をスクリプトプロパティから読み込む
+// ============================================================
+function getConfig() {
+  const props = PropertiesService.getScriptProperties();
+  const lifeOsUrl = props.getProperty('LIFE_OS_URL');
+  const authKey   = props.getProperty('AUTH_KEY');
+  const sheetId   = props.getProperty('SHEET_ID');
+
+  if (!lifeOsUrl || !authKey) {
+    throw new Error('スクリプトプロパティに LIFE_OS_URL と AUTH_KEY を設定してください');
+  }
+
+  return { lifeOsUrl, authKey, sheetId };
+}
 
 // ============================================================
 // メイン: 全テーブルを同期
 // ============================================================
 function syncAll() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const config = getConfig();
+
+  // SHEET_ID があればそのスプシを開く、なければアクティブを使う
+  const ss = config.sheetId
+    ? SpreadsheetApp.openById(config.sheetId)
+    : SpreadsheetApp.getActiveSpreadsheet();
+
   const results = [];
 
   ['entries', 'todos', 'books'].forEach(table => {
     try {
-      const data = fetchTable(table);
+      const data = fetchTable(table, config);
       writeSheet(ss, table, data);
       results.push(`✅ ${SHEET_NAMES[table]}: ${data.length}件`);
     } catch (e) {
@@ -53,7 +76,6 @@ function syncAll() {
     }
   });
 
-  // 「ログ」シートに同期履歴を記録
   writeLog(ss, results);
   Logger.log(results.join('\n'));
 }
@@ -61,11 +83,11 @@ function syncAll() {
 // ============================================================
 // API からデータ取得
 // ============================================================
-function fetchTable(table) {
-  const url = `${LIFE_OS_URL}/api/export?table=${table}&format=json&limit=10000`;
+function fetchTable(table, config) {
+  const url = `${config.lifeOsUrl}/api/export?table=${table}&format=json&limit=10000`;
   const options = {
     method: 'get',
-    headers: { 'Authorization': `Bearer ${AUTH_KEY}` },
+    headers: { 'Authorization': `Bearer ${config.authKey}` },
     muteHttpExceptions: true,
   };
 
@@ -74,8 +96,7 @@ function fetchTable(table) {
     throw new Error(`HTTP ${res.getResponseCode()}: ${res.getContentText().slice(0, 200)}`);
   }
 
-  const json = JSON.parse(res.getContentText());
-  return json.data || [];
+  return JSON.parse(res.getContentText()).data || [];
 }
 
 // ============================================================
@@ -96,7 +117,7 @@ function writeSheet(ss, table, data) {
     return;
   }
 
-  const cols = COLUMNS[table];
+  const cols      = COLUMNS[table];
   const headerRow = cols.map(c => HEADER_JA[c] || c);
   const dataRows  = data.map(row => cols.map(c => row[c] ?? ''));
 
@@ -105,30 +126,27 @@ function writeSheet(ss, table, data) {
   sheet.getRange(1, 1, allRows.length, cols.length).setValues(allRows);
 
   // ヘッダー書式
-  const headerRange = sheet.getRange(1, 1, 1, cols.length);
-  headerRange
+  sheet.getRange(1, 1, 1, cols.length)
     .setBackground('#4a90e2')
     .setFontColor('#ffffff')
     .setFontWeight('bold')
     .setHorizontalAlignment('center');
 
   // 行の交互背景色
-  if (dataRows.length > 0) {
-    for (let i = 0; i < dataRows.length; i++) {
-      const color = i % 2 === 0 ? '#f8f9ff' : '#ffffff';
-      sheet.getRange(i + 2, 1, 1, cols.length).setBackground(color);
-    }
+  for (let i = 0; i < dataRows.length; i++) {
+    sheet.getRange(i + 2, 1, 1, cols.length)
+      .setBackground(i % 2 === 0 ? '#f8f9ff' : '#ffffff');
   }
 
   // 列幅自動調整
   sheet.autoResizeColumns(1, cols.length);
 
-  // フィルタを設定
+  // フィルタ設定（既存フィルタがあれば削除してから再設定）
+  try { sheet.getFilter()?.remove(); } catch (_) {}
   sheet.getRange(1, 1, allRows.length, cols.length).createFilter();
 
-  // 最終更新を右上セルに
-  const updateCell = sheet.getRange(1, cols.length + 2);
-  updateCell
+  // 最終更新時刻を右端に
+  sheet.getRange(1, cols.length + 2)
     .setValue('最終更新: ' + Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy/MM/dd HH:mm'))
     .setFontColor('#888888')
     .setFontSize(9);
@@ -148,9 +166,9 @@ function writeLog(ss, results) {
       .setFontWeight('bold');
   }
 
-  const now = Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy/MM/dd HH:mm:ss');
-  const ok   = results.filter(r => r.startsWith('✅')).length;
-  const ng   = results.filter(r => r.startsWith('❌')).length;
+  const now     = Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy/MM/dd HH:mm:ss');
+  const ok      = results.filter(r => r.startsWith('✅')).length;
+  const ng      = results.filter(r => r.startsWith('❌')).length;
   const summary = `成功${ok}件 / 失敗${ng}件`;
 
   logSheet.appendRow([now, summary, results.join(' | ')]);
@@ -166,12 +184,10 @@ function writeLog(ss, results) {
 // 定期実行トリガーの設定（初回のみ手動実行）
 // ============================================================
 function setupTrigger() {
-  // 既存のトリガーを全削除
-  ScriptApp.getProjectTriggers().forEach(t => {
-    if (t.getHandlerFunction() === 'syncAll') {
-      ScriptApp.deleteTrigger(t);
-    }
-  });
+  // 既存の syncAll トリガーを削除
+  ScriptApp.getProjectTriggers()
+    .filter(t => t.getHandlerFunction() === 'syncAll')
+    .forEach(t => ScriptApp.deleteTrigger(t));
 
   // 毎日 AM 6:00 に実行
   ScriptApp.newTrigger('syncAll')
@@ -182,13 +198,13 @@ function setupTrigger() {
 
   SpreadsheetApp.getUi().alert(
     'トリガー設定完了',
-    '毎日 AM6:00 に Life OS データを自動同期します。\n\n今すぐ同期する場合は syncAll を実行してください。',
+    '毎日 AM6:00 に Life OS データを自動同期します。\n\n今すぐ同期する場合はメニュー「🗂 Life OS → 今すぐ同期」を実行してください。',
     SpreadsheetApp.getUi().ButtonSet.OK
   );
 }
 
 // ============================================================
-// カスタムメニューをスプレッドシートに追加
+// スプレッドシートを開いたときにカスタムメニューを追加
 // ============================================================
 function onOpen() {
   SpreadsheetApp.getUi()
