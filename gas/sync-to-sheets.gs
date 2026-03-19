@@ -196,21 +196,6 @@ function setupTrigger() {
     .everyDays(1)
     .create();
 
-  SpreadsheetApp.getUi().alert(
-    'トリガー設定完了',
-    '毎日 AM6:00 に Life OS データを自動同期します。\n\n今すぐ同期する場合はメニュー「🗂 Life OS → 今すぐ同期」を実行してください。',
-    SpreadsheetApp.getUi().ButtonSet.OK
-  );
+  Logger.log('トリガー設定完了: 毎日 AM6:00 に Life OS データを自動同期します。');
 }
 
-// ============================================================
-// スプレッドシートを開いたときにカスタムメニューを追加
-// ============================================================
-function onOpen() {
-  SpreadsheetApp.getUi()
-    .createMenu('🗂 Life OS')
-    .addItem('今すぐ同期', 'syncAll')
-    .addSeparator()
-    .addItem('⏰ 定期トリガー設定（初回のみ）', 'setupTrigger')
-    .addToUi();
-}
