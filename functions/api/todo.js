@@ -106,3 +106,13 @@ export async function onRequestPut({ request, env }) {
 
   return json({ id, updated: true });
 }
+
+// DELETE /api/todo?id=xxx
+export async function onRequestDelete({ request, env }) {
+  const url = new URL(request.url);
+  const id = url.searchParams.get('id');
+  if (!id) return json({ error: 'id required' }, 400);
+
+  await env.DB.prepare(`DELETE FROM todos WHERE id = ?`).bind(id).run();
+  return json({ id, deleted: true });
+}

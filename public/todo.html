@@ -7,19 +7,47 @@
   <link rel="stylesheet" href="/style.css">
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#fafafa">
+  <style>
+    .ai-suggest-card {
+      background: linear-gradient(135deg, #fff0f5 0%, #f0f0ff 100%);
+      border-radius: 14px;
+      padding: 14px;
+      margin-bottom: 12px;
+    }
+    .ai-suggest-card .ai-msg {
+      font-size: 13px;
+      color: #e91e8a;
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+    .ai-suggest-card .todo-item { background: #fff; border-radius: 10px; padding: 8px 10px; margin-bottom: 6px; }
+    .group-header {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+      padding: 12px 4px 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .group-header .badge { background: var(--border); color: var(--text); border-radius: 10px; padding: 1px 8px; font-size: 11px; font-weight: 500; }
+    .overdue-header { color: #e53e3e; }
+    .delete-btn { background: none; border: none; font-size: 16px; cursor: pointer; padding: 4px; opacity: 0.4; }
+    .delete-btn:hover { opacity: 1; }
+  </style>
 </head>
 <body>
 <div class="app-wrapper">
 
-  <!-- フィルタータブ -->
+  <!-- ビュー切替 -->
   <div class="filter-tabs">
-    <button class="filter-tab active" id="tab-open" onclick="setFilter('open')">未完了</button>
-    <button class="filter-tab" id="tab-done" onclick="setFilter('done')">完了済み</button>
-    <button class="filter-tab" id="tab-all" onclick="setFilter('all')">すべて</button>
+    <button class="filter-tab active" id="tab-smart" onclick="setView('smart')">🤖 AI整理</button>
+    <button class="filter-tab" id="tab-all" onclick="setView('all')">すべて</button>
+    <button class="filter-tab" id="tab-done" onclick="setView('done')">完了済み</button>
   </div>
 
   <!-- Todoリスト -->
-  <div id="todoList" class="dashboard" style="padding-top:8px;"></div>
+  <div id="todoList" class="dashboard" style="padding-top:4px;"></div>
 
 </div>
 
@@ -65,15 +93,15 @@
   </a>
 </nav>
 
-<!-- Google Sheets リンク -->
 <a href="https://docs.google.com/spreadsheets/d/1TJ6Q6tHzxz7fN4PxbMD7fWMVIW6eyoxKYiyeXKgz35w/edit" class="sheets-fab" target="_blank" rel="noopener" title="Google スプレッドシートで見る">📊</a>
 
 <div id="toast"></div>
 
 <script>
 const AUTH_KEY = 'hidapia2026';
-let currentFilter = 'open';
+let currentView = 'smart';
 let allTodos = [];
+let aiSuggestions = null;
 
 document.addEventListener('DOMContentLoaded', () => load());
 
@@ -88,58 +116,148 @@ async function load() {
   try {
     const data = await apiFetch('/api/todo?status=all');
     allTodos = data.todos;
+    // AI提案を並行取得（失敗しても続行）
+    if (currentView === 'smart') {
+      loadAiSuggest();
+    }
     render();
   } catch (e) {
     showToast(`エラー: ${e.message}`);
   }
 }
 
-function setFilter(f) {
-  currentFilter = f;
+async function loadAiSuggest() {
+  try {
+    aiSuggestions = await apiFetch('/api/todo-suggest');
+  } catch (_) {
+    aiSuggestions = null;
+  }
+  if (currentView === 'smart') render();
+}
+
+function setView(v) {
+  currentView = v;
   document.querySelectorAll('.filter-tab').forEach(b => b.classList.remove('active'));
-  document.getElementById(`tab-${f}`).classList.add('active');
+  document.getElementById(`tab-${v}`).classList.add('active');
+  if (v === 'smart' && !aiSuggestions) loadAiSuggest();
   render();
 }
 
 function render() {
-  const today = new Date().toISOString().slice(0, 10);
-  const filtered = currentFilter === 'all'
-    ? allTodos
-    : allTodos.filter(t => t.status === currentFilter);
-
   const el = document.getElementById('todoList');
-  if (!filtered.length) {
-    el.innerHTML = '<div class="empty-msg" style="padding:32px 0;">ToDoはありません 🎉</div>';
+  const today = new Date().toISOString().slice(0, 10);
+
+  if (currentView === 'done') {
+    const done = allTodos.filter(t => t.status === 'done').slice(0, 20);
+    if (!done.length) { el.innerHTML = '<div class="empty-msg" style="padding:32px 0;">完了したToDoはありません</div>'; return; }
+    el.innerHTML = `<div class="section"><div class="section-body">${done.map(t => renderTodoItem(t, today, true)).join('')}</div></div>`;
     return;
   }
 
-  el.innerHTML = `<div class="section"><div class="section-body">${
-    filtered.map(t => {
-      const overdue = t.due && t.due < today && t.status !== 'done';
-      const priority = t.priority || 'mid';
-      const priorityLabel = { high: '高', mid: '普通', low: '低' }[priority];
-      const isDone = t.status === 'done';
-      const td = encodeURIComponent(JSON.stringify(t));
-      return `
-        <div class="todo-item" style="${isDone ? 'opacity:0.6;' : ''}">
-          <div class="todo-check ${isDone ? 'checked' : ''}"
-            onclick="${isDone ? `reopenTodo('${t.id}', this.closest('.todo-item'))` : `completeTodo('${t.id}', this.closest('.todo-item'))`}"
-            title="${isDone ? '復帰' : '完了'}">
-            ${isDone ? '✅' : ''}
-          </div>
-          <div class="todo-content">
-            <div class="todo-text" style="${isDone ? 'text-decoration:line-through;' : ''}">${escHtml(t.text)}</div>
-            <div class="todo-meta ${overdue ? 'overdue' : ''}">
-              ${t.due ? `📅 ${t.due}${overdue ? ' 期限超過！' : ''}` : ''}
-              ${t.tag ? ` #${t.tag}` : ''}
-              ${isDone && t.done_at ? ` ✅ ${t.done_at.slice(0, 10)}` : ''}
-            </div>
-          </div>
-          <div class="priority-badge ${priority}" style="cursor:pointer;" onclick="openEdit(decodeURIComponent('${td}'))">${priorityLabel} ✏️</div>
+  if (currentView === 'all') {
+    const open = allTodos.filter(t => t.status === 'open');
+    if (!open.length) { el.innerHTML = '<div class="empty-msg" style="padding:32px 0;">ToDoはありません 🎉</div>'; return; }
+    el.innerHTML = `<div class="section"><div class="section-body">${open.map(t => renderTodoItem(t, today)).join('')}</div></div>`;
+    return;
+  }
+
+  // === AI整理ビュー ===
+  const open = allTodos.filter(t => t.status === 'open');
+  if (!open.length) { el.innerHTML = '<div class="empty-msg" style="padding:32px 0;">やることはないよ！のんびりしよ〜🌸</div>'; return; }
+
+  // 週の計算
+  const todayDate = new Date(today);
+  const weekEnd = new Date(today);
+  weekEnd.setDate(weekEnd.getDate() + (7 - weekEnd.getDay())); // 次の日曜
+  const weekEndStr = weekEnd.toISOString().slice(0, 10);
+  const nextWeekEnd = new Date(weekEnd);
+  nextWeekEnd.setDate(nextWeekEnd.getDate() + 7);
+  const nextWeekEndStr = nextWeekEnd.toISOString().slice(0, 10);
+
+  // グループ分け
+  const overdue = open.filter(t => t.due && t.due < today);
+  const thisWeek = open.filter(t => t.due && t.due >= today && t.due <= weekEndStr && !overdue.includes(t));
+  const later = open.filter(t => t.due && t.due > weekEndStr);
+  const noDue = open.filter(t => !t.due);
+
+  let html = '';
+
+  // AI おすすめ
+  if (aiSuggestions) {
+    const suggestedIds = new Set(aiSuggestions.suggestions || []);
+    const suggested = open.filter(t => suggestedIds.has(t.id));
+    if (suggested.length) {
+      html += `<div class="ai-suggest-card">
+        <div class="ai-msg">🐾 ${escHtml(aiSuggestions.message || '今日のおすすめだよ〜！')}</div>
+        ${suggested.map(t => renderTodoItem(t, today)).join('')}
+      </div>`;
+    } else if (aiSuggestions.message) {
+      html += `<div class="ai-suggest-card"><div class="ai-msg">🐾 ${escHtml(aiSuggestions.message)}</div></div>`;
+    }
+  } else {
+    html += `<div class="ai-suggest-card"><div class="ai-msg">🐾 考え中...</div></div>`;
+  }
+
+  // 期限超過
+  if (overdue.length) {
+    html += `<div class="group-header overdue-header">🚨 期限超過 <span class="badge" style="background:#fed7d7;color:#e53e3e;">${overdue.length}</span></div>`;
+    html += overdue.map(t => renderTodoItem(t, today)).join('');
+  }
+
+  // 今週やること
+  if (thisWeek.length) {
+    html += `<div class="group-header">📅 今週やること <span class="badge">${thisWeek.length}</span></div>`;
+    html += thisWeek.map(t => renderTodoItem(t, today)).join('');
+  }
+
+  // 来週以降
+  if (later.length) {
+    html += `<div class="group-header">📆 来週以降 <span class="badge">${later.length}</span></div>`;
+    html += later.map(t => renderTodoItem(t, today)).join('');
+  }
+
+  // いつかやる
+  if (noDue.length) {
+    html += `<div class="group-header">💭 いつかやる <span class="badge">${noDue.length}</span></div>`;
+    html += noDue.map(t => renderTodoItem(t, today)).join('');
+  }
+
+  // 最近の完了
+  const recentDone = allTodos.filter(t => t.status === 'done').slice(0, 5);
+  if (recentDone.length) {
+    html += `<div class="group-header">✅ 最近の完了</div>`;
+    html += recentDone.map(t => renderTodoItem(t, today, true)).join('');
+  }
+
+  el.innerHTML = html;
+}
+
+function renderTodoItem(t, today, showDone = false) {
+  const overdue = t.due && t.due < today && t.status !== 'done';
+  const priority = t.priority || 'mid';
+  const priorityLabel = { high: '高', mid: '普通', low: '低' }[priority];
+  const isDone = t.status === 'done';
+  const td = encodeURIComponent(JSON.stringify(t));
+
+  return `
+    <div class="todo-item" style="${isDone ? 'opacity:0.6;' : ''}">
+      <div class="todo-check ${isDone ? 'checked' : ''}"
+        onclick="${isDone ? `reopenTodo('${t.id}')` : `completeTodo('${t.id}', this.closest('.todo-item'))`}"
+        title="${isDone ? '復帰' : '完了'}">
+        ${isDone ? '✅' : ''}
+      </div>
+      <div class="todo-content">
+        <div class="todo-text" style="${isDone ? 'text-decoration:line-through;' : ''}">${escHtml(t.text)}</div>
+        <div class="todo-meta ${overdue ? 'overdue' : ''}">
+          ${t.due ? `📅 ${t.due}${overdue ? ' 期限超過！' : ''}` : ''}
+          ${t.tag ? ` #${t.tag}` : ''}
+          ${isDone && t.done_at ? ` ✅ ${t.done_at.slice(0, 10)}` : ''}
         </div>
-      `;
-    }).join('')
-  }</div></div>`;
+      </div>
+      ${!isDone ? `<div class="priority-badge ${priority}" style="cursor:pointer;" onclick="openEdit(decodeURIComponent('${td}'))">${priorityLabel} ✏️</div>` : ''}
+      <button class="delete-btn" onclick="deleteTodo('${t.id}')" title="削除">🗑</button>
+    </div>
+  `;
 }
 
 async function completeTodo(id, el) {
@@ -148,22 +266,24 @@ async function completeTodo(id, el) {
     await apiFetch('/api/todo', { method: 'PUT', body: JSON.stringify({ id, status: 'done' }) });
     showToast('✅ 完了！');
     await load();
-  } catch (e) {
-    el.style.opacity = '1';
-    showToast(`エラー: ${e.message}`);
-  }
+  } catch (e) { el.style.opacity = '1'; showToast(`エラー: ${e.message}`); }
 }
 
-async function reopenTodo(id, el) {
-  el.style.opacity = '0.5';
+async function reopenTodo(id) {
   try {
     await apiFetch('/api/todo', { method: 'PUT', body: JSON.stringify({ id, status: 'open' }) });
     showToast('↩ 復帰しました');
     await load();
-  } catch (e) {
-    el.style.opacity = '1';
-    showToast(`エラー: ${e.message}`);
-  }
+  } catch (e) { showToast(`エラー: ${e.message}`); }
+}
+
+async function deleteTodo(id) {
+  if (!confirm('このToDoを削除しますか？')) return;
+  try {
+    await apiFetch(`/api/todo?id=${id}`, { method: 'DELETE' });
+    showToast('🗑 削除しました');
+    await load();
+  } catch (e) { showToast(`エラー: ${e.message}`); }
 }
 
 function openEdit(todoJson) {
@@ -178,9 +298,7 @@ function openEdit(todoJson) {
   document.getElementById('todoEditModal').style.display = 'flex';
 }
 
-function closeEdit() {
-  document.getElementById('todoEditModal').style.display = 'none';
-}
+function closeEdit() { document.getElementById('todoEditModal').style.display = 'none'; }
 
 function selectEditPriority(p) {
   document.querySelectorAll('.todo-edit-priority').forEach(b => {
@@ -199,9 +317,7 @@ async function saveEdit() {
     showToast('✅ 更新しました');
     closeEdit();
     await load();
-  } catch (e) {
-    showToast(`エラー: ${e.message}`);
-  }
+  } catch (e) { showToast(`エラー: ${e.message}`); }
 }
 
 let toastTimer;

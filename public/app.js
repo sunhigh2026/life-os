@@ -23,6 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
   loadDashboard();
   loadTopTags();
   loadCalendar();
+  loadMenstrualStats();
 });
 
 // ==============================
@@ -425,6 +426,22 @@ function renderStreak(data, today) {
     cells.push(`<div class="streak-cell ${map[key] ? 'has-entry' : ''}" title="${key}"></div>`);
   }
   el.innerHTML = cells.join('');
+}
+
+// ==============================
+// 生理周期予測
+// ==============================
+async function loadMenstrualStats() {
+  try {
+    const data = await apiFetch('/api/menstrual-stats');
+    const section = document.getElementById('sectionMenstrual');
+    const el = document.getElementById('menstrualInfo');
+    if (data.detected && data.nextPrediction) {
+      section.style.display = '';
+      const emoji = data.daysUntil <= 3 ? '🌸' : '🩷';
+      el.innerHTML = `${emoji} ${escHtml(data.message)}`;
+    }
+  } catch (_) {}
 }
 
 // ==============================
