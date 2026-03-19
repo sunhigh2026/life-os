@@ -391,8 +391,24 @@ function renderRecentDone(todos) {
     <div class="done-item">
       <span class="done-check">✅</span>
       <span class="done-text">${escHtml(t.text)}</span>
+      <button class="reopen-btn" onclick="reopenTodo('${t.id}', this.closest('.done-item'))">↩ 復帰</button>
     </div>
   `).join('');
+}
+
+async function reopenTodo(id, el) {
+  el.style.opacity = '0.5';
+  try {
+    await apiFetch('/api/todo', {
+      method: 'PUT',
+      body: JSON.stringify({ id, status: 'open' }),
+    });
+    showToast('↩ 復帰しました');
+    loadDashboard();
+  } catch (e) {
+    el.style.opacity = '1';
+    showToast(`エラー: ${e.message}`);
+  }
 }
 
 function renderStreak(data, today) {

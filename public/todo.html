@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ToDo - Life OS</title>
+  <link rel="stylesheet" href="/style.css">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#fafafa">
+</head>
+<body>
+<div class="app-wrapper">
+
+  <!-- フィルタータブ -->
+  <div class="filter-tabs">
+    <button class="filter-tab active" id="tab-open" onclick="setFilter('open')">未完了</button>
+    <button class="filter-tab" id="tab-done" onclick="setFilter('done')">完了済み</button>
+    <button class="filter-tab" id="tab-all" onclick="setFilter('all')">すべて</button>
+  </div>
+
+  <!-- Todoリスト -->
+  <div id="todoList" class="dashboard" style="padding-top:8px;"></div>
+
+</div>
+
+<!-- Todo編集モーダル -->
+<div id="todoEditModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:400;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:16px;padding:20px;width:90%;max-width:480px;display:flex;flex-direction:column;gap:12px;">
+    <div style="font-weight:600;font-size:15px;">ToDoを編集</div>
+    <input type="hidden" id="todoEditId">
+    <input type="text" id="todoEditText" placeholder="タスク内容">
+    <input type="text" id="todoEditTag" placeholder="タグ（任意）">
+    <div style="display:flex;gap:6px;align-items:center;">
+      <span style="font-size:12px;color:var(--muted);">期限:</span>
+      <input type="date" id="todoEditDue" style="flex:1;">
+    </div>
+    <div style="display:flex;gap:6px;">
+      <button class="priority-btn todo-edit-priority" data-priority="high" onclick="selectEditPriority('high')">🔴 高</button>
+      <button class="priority-btn todo-edit-priority" data-priority="mid" onclick="selectEditPriority('mid')">🟡 普通</button>
+      <button class="priority-btn todo-edit-priority" data-priority="low" onclick="selectEditPriority('low')">🔵 低</button>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn-submit todo-mode" onclick="saveEdit()">保存</button>
+      <button class="btn-submit" onclick="closeEdit()" style="background:#aaa;">キャンセル</button>
+    </div>
+  </div>
+</div>
+
+<!-- タブバー -->
+<nav class="tab-bar">
+  <a href="/" class="tab-item">
+    <span class="tab-icon">🏠</span>Home
+  </a>
+  <a href="/todo.html" class="tab-item active">
+    <span class="tab-icon">☑</span>ToDo
+  </a>
+  <a href="/history.html" class="tab-item">
+    <span class="tab-icon">🗓</span>履歴
+  </a>
+  <a href="/books.html" class="tab-item">
+    <span class="tab-icon">📚</span>読書
+  </a>
+  <a href="/chat.html" class="tab-item">
+    <span class="tab-icon">💬</span>Chat
+  </a>
+</nav>
+
+<div id="toast"></div>
+
+<script>
+const AUTH_KEY = 'hidapia2026';
+let currentFilter = 'open';
+let allTodos = [];
+
+document.addEventListener('DOMContentLoaded', () => load());
+
+async function apiFetch(path, options = {}) {
+  const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${AUTH_KEY}`, ...(options.headers || {}) };
+  const res = await fetch(path, { ...options, headers });
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `HTTP ${res.status}`);
+  return res.json();
+}
+
+async function load() {
+  try {
+    const data = await apiFetch('/api/todo?status=all');
+    allTodos = data.todos;
+    render();
+  } catch (e) {
+    showToast(`エラー: ${e.message}`);
+  }
+}
+
+function setFilter(f) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-tab').forEach(b => b.classList.remove('active'));
+  document.getElementById(`tab-${f}`).classList.add('active');
+  render();
+}
+
+function render() {
+  const today = new Date().toISOString().slice(0, 10);
+  const filtered = currentFilter === 'all'
+    ? allTodos
+    : allTodos.filter(t => t.status === currentFilter);
+
+  const el = document.getElementById('todoList');
+  if (!filtered.length) {
+    el.innerHTML = '<div class="empty-msg" style="padding:32px 0;">ToDoはありません 🎉</div>';
+    return;
+  }
+
+  el.innerHTML = `<div class="section"><div class="section-body">${
+    filtered.map(t => {
+      const overdue = t.due && t.due < today && t.status !== 'done';
+      const priority = t.priority || 'mid';
+      const priorityLabel = { high: '高', mid: '普通', low: '低' }[priority];
+      const isDone = t.status === 'done';
+      const td = encodeURIComponent(JSON.stringify(t));
+      return `
+        <div class="todo-item" style="${isDone ? 'opacity:0.6;' : ''}">
+          <div class="todo-check ${isDone ? 'checked' : ''}"
+            onclick="${isDone ? `reopenTodo('${t.id}', this.closest('.todo-item'))` : `completeTodo('${t.id}', this.closest('.todo-item'))`}"
+            title="${isDone ? '復帰' : '完了'}">
+            ${isDone ? '✅' : ''}
+          </div>
+          <div class="todo-content">
+            <div class="todo-text" style="${isDone ? 'text-decoration:line-through;' : ''}">${escHtml(t.text)}</div>
+            <div class="todo-meta ${overdue ? 'overdue' : ''}">
+              ${t.due ? `📅 ${t.due}${overdue ? ' 期限超過！' : ''}` : ''}
+              ${t.tag ? ` #${t.tag}` : ''}
+              ${isDone && t.done_at ? ` ✅ ${t.done_at.slice(0, 10)}` : ''}
+            </div>
+          </div>
+          <div class="priority-badge ${priority}" style="cursor:pointer;" onclick="openEdit(decodeURIComponent('${td}'))">${priorityLabel} ✏️</div>
+        </div>
+      `;
+    }).join('')
+  }</div></div>`;
+}
+
+async function completeTodo(id, el) {
+  el.style.opacity = '0.5';
+  try {
+    await apiFetch('/api/todo', { method: 'PUT', body: JSON.stringify({ id, status: 'done' }) });
+    showToast('✅ 完了！');
+    await load();
+  } catch (e) {
+    el.style.opacity = '1';
+    showToast(`エラー: ${e.message}`);
+  }
+}
+
+async function reopenTodo(id, el) {
+  el.style.opacity = '0.5';
+  try {
+    await apiFetch('/api/todo', { method: 'PUT', body: JSON.stringify({ id, status: 'open' }) });
+    showToast('↩ 復帰しました');
+    await load();
+  } catch (e) {
+    el.style.opacity = '1';
+    showToast(`エラー: ${e.message}`);
+  }
+}
+
+function openEdit(todoJson) {
+  const t = JSON.parse(todoJson);
+  document.getElementById('todoEditId').value = t.id;
+  document.getElementById('todoEditText').value = t.text || '';
+  document.getElementById('todoEditTag').value = t.tag || '';
+  document.getElementById('todoEditDue').value = t.due || '';
+  document.querySelectorAll('.todo-edit-priority').forEach(b => {
+    b.classList.toggle('selected', b.dataset.priority === (t.priority || 'mid'));
+  });
+  document.getElementById('todoEditModal').style.display = 'flex';
+}
+
+function closeEdit() {
+  document.getElementById('todoEditModal').style.display = 'none';
+}
+
+function selectEditPriority(p) {
+  document.querySelectorAll('.todo-edit-priority').forEach(b => {
+    b.classList.toggle('selected', b.dataset.priority === p);
+  });
+}
+
+async function saveEdit() {
+  const id = document.getElementById('todoEditId').value;
+  const text = document.getElementById('todoEditText').value.trim();
+  const tag = document.getElementById('todoEditTag').value.trim() || null;
+  const due = document.getElementById('todoEditDue').value || null;
+  const priority = document.querySelector('.todo-edit-priority.selected')?.dataset.priority || 'mid';
+  try {
+    await apiFetch('/api/todo', { method: 'PUT', body: JSON.stringify({ id, text, tag, due, priority }) });
+    showToast('✅ 更新しました');
+    closeEdit();
+    await load();
+  } catch (e) {
+    showToast(`エラー: ${e.message}`);
+  }
+}
+
+let toastTimer;
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2000);
+}
+
+function escHtml(str) {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+</script>
+</body>
+</html>

@@ -14,18 +14,17 @@ export async function onRequestGet({ request, env }) {
   const isIsbn = /^[0-9\-]{9,17}$/.test(q.replace(/\s/g, ''));
 
   if (isIsbn) {
-    return searchByIsbn(q.replace(/[\-\s]/g, ''), env);
+    return searchByIsbn(q.replace(/[\-\s]/g, ''));
   } else {
-    return searchByTitle(q, env);
+    return searchByTitle(q);
   }
 }
 
 // ISBN検索: OpenBD（日本の書籍DB、無料・制限なし）
-async function searchByIsbn(isbn, env) {
+async function searchByIsbn(isbn) {
   try {
     const res = await fetch(`https://api.openbd.jp/v1/get?isbn=${isbn}`);
     const data = await res.json();
-
     if (data && data[0]) {
       const s = data[0].summary;
       return json({
@@ -39,34 +38,32 @@ async function searchByIsbn(isbn, env) {
         }],
       });
     }
-  } catch (e) {
-    // OpenBDが失敗した場合はGoogle Booksにフォールバック
-  }
-
-  return searchByTitle(`isbn:${isbn}`, env);
+  } catch (_) {}
+  // OpenBDにない場合はタイトル検索にフォールバック
+  return searchByTitle(isbn);
 }
 
-// タイトル検索: Google Books API
-async function searchByTitle(q, env) {
+// タイトル検索: Open Library（無料・APIキー不要・無制限）
+async function searchByTitle(q) {
   try {
-    const apiKey = env.GOOGLE_BOOKS_API_KEY ? `&key=${env.GOOGLE_BOOKS_API_KEY}` : '';
-    const apiUrl = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q)}&maxResults=10${apiKey}`;
-    const res = await fetch(apiUrl);
+    const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(q)}&limit=10&lang=jpn`;
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'LifeOS/1.0 (personal-app)' },
+    });
     const data = await res.json();
 
-    if (!data.items) return json({ books: [], _debug: data.error?.message });
+    if (!data.docs || !data.docs.length) return json({ books: [] });
 
-    const books = data.items.map((item) => {
-      const info = item.volumeInfo;
-      const isbn = (info.industryIdentifiers || [])
-        .find((x) => x.type === 'ISBN_13' || x.type === 'ISBN_10')?.identifier || null;
+    const books = data.docs.map((doc) => {
+      const isbn = (doc.isbn || [])[0] || null;
+      const coverId = doc.cover_i;
       return {
         isbn,
-        title: info.title || '',
-        author: (info.authors || []).join(', '),
-        cover_url: info.imageLinks?.thumbnail?.replace('http:', 'https:') || null,
-        publisher: info.publisher || '',
-        published_date: info.publishedDate || '',
+        title: doc.title || '',
+        author: (doc.author_name || []).join(', '),
+        cover_url: coverId ? `https://covers.openlibrary.org/b/id/${coverId}-M.jpg` : null,
+        publisher: (doc.publisher || [])[0] || '',
+        published_date: doc.first_publish_year ? String(doc.first_publish_year) : '',
       };
     });
 
