@@ -111,6 +111,36 @@ function toggleChatVoice() {
 }
 
 // ==============================
+// キャラ設定読み込み
+// ==============================
+async function initCharacter() {
+  try {
+    const res = await fetch('/api/settings?keys=char_name,char_icon,char_greeting', {
+      headers: { 'Authorization': `Bearer ${AUTH_KEY}` },
+    });
+    if (!res.ok) return;
+    const s = await res.json();
+
+    if (s.char_name) {
+      const nameEl = document.getElementById('chatHeaderName');
+      if (nameEl) nameEl.textContent = s.char_name;
+    }
+    if (s.char_icon) {
+      const iconEl = document.getElementById('chatHeaderIcon');
+      if (iconEl) {
+        iconEl.innerHTML = `<img src="/${s.char_icon}" alt="" onerror="this.parentElement.textContent='🩷'">`;
+      }
+    }
+    if (s.char_greeting) {
+      const greetEl = document.getElementById('greetingMsg');
+      if (greetEl) greetEl.innerHTML = s.char_greeting.replace(/\n/g, '<br>');
+    }
+  } catch (_) { /* 設定読み込み失敗は無視 */ }
+}
+
+document.addEventListener('DOMContentLoaded', initCharacter);
+
+// ==============================
 // Toast
 // ==============================
 let toastTimer;

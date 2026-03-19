@@ -60,6 +60,12 @@ CREATE TABLE IF NOT EXISTS goals (
   created_at TEXT DEFAULT (datetime('now'))
 );
 
+-- 設定（キャラクター設定等）
+CREATE TABLE IF NOT EXISTS settings (
+  key TEXT PRIMARY KEY,
+  value TEXT
+);
+
 -- インデックス
 CREATE INDEX IF NOT EXISTS idx_entries_datetime ON entries(datetime);
 CREATE INDEX IF NOT EXISTS idx_todos_status ON todos(status);
