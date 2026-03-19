@@ -43,7 +43,7 @@ ${recentBooks.map((b) => `- ${b.title}（${b.author}）★${b.rating} [${b.statu
 
   try {
     const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-04-17:generateContent?key=${env.GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${env.GEMINI_API_KEY}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -57,6 +57,12 @@ ${recentBooks.map((b) => `- ${b.title}（${b.author}）★${b.rating} [${b.statu
     );
 
     const data = await res.json();
+
+    if (!res.ok) {
+      const errMsg = data.error?.message || JSON.stringify(data).slice(0, 200);
+      return json({ error: 'Gemini API error', detail: errMsg }, 502);
+    }
+
     const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || 'うまく答えられなかったよ…ごめんね！';
 
     return json({ reply });
