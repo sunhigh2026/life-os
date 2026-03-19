@@ -11,19 +11,50 @@ export async function onRequestGet({ request, env }) {
   const q = url.searchParams.get('q');
   if (!q) return json({ error: 'q parameter required' }, 400);
 
-  // ISBNっぽければISBN検索、そうでなければタイトル検索
   const isIsbn = /^[0-9\-]{9,17}$/.test(q.replace(/\s/g, ''));
-  const query = isIsbn ? `isbn:${q.replace(/[\-\s]/g, '')}` : q;
 
+  if (isIsbn) {
+    return searchByIsbn(q.replace(/[\-\s]/g, ''), env);
+  } else {
+    return searchByTitle(q, env);
+  }
+}
+
+// ISBN検索: OpenBD（日本の書籍DB、無料・制限なし）
+async function searchByIsbn(isbn, env) {
   try {
-    const apiKey = env.GOOGLE_BOOKS_API_KEY ? `&key=${env.GOOGLE_BOOKS_API_KEY}` : '';
-    const apiUrl = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=10${apiKey}`;
-    const res = await fetch(apiUrl, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; LifeOS/1.0)' },
-    });
+    const res = await fetch(`https://api.openbd.jp/v1/get?isbn=${isbn}`);
     const data = await res.json();
 
-    if (!data.items) return json({ books: [] });
+    if (data && data[0]) {
+      const s = data[0].summary;
+      return json({
+        books: [{
+          isbn: s.isbn || isbn,
+          title: s.title || '',
+          author: s.author || '',
+          cover_url: s.cover || null,
+          publisher: s.publisher || '',
+          published_date: s.pubdate || '',
+        }],
+      });
+    }
+  } catch (e) {
+    // OpenBDが失敗した場合はGoogle Booksにフォールバック
+  }
+
+  return searchByTitle(`isbn:${isbn}`, env);
+}
+
+// タイトル検索: Google Books API
+async function searchByTitle(q, env) {
+  try {
+    const apiKey = env.GOOGLE_BOOKS_API_KEY ? `&key=${env.GOOGLE_BOOKS_API_KEY}` : '';
+    const apiUrl = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q)}&maxResults=10${apiKey}`;
+    const res = await fetch(apiUrl);
+    const data = await res.json();
+
+    if (!data.items) return json({ books: [], _debug: data.error?.message });
 
     const books = data.items.map((item) => {
       const info = item.volumeInfo;
@@ -41,6 +72,6 @@ export async function onRequestGet({ request, env }) {
 
     return json({ books });
   } catch (e) {
-    return json({ error: 'Google Books API error', detail: e.message }, 502);
+    return json({ error: 'book search failed', detail: e.message }, 502);
   }
 }
