@@ -13,14 +13,20 @@ export async function onRequest(context) {
     return new Response(null, { status: 204, headers: corsHeaders });
   }
 
-  // 全リクエストでAUTH_KEY検証
-  const authHeader = request.headers.get('Authorization');
-  const expectedKey = `Bearer ${env.AUTH_KEY}`;
-  if (!authHeader || authHeader !== expectedKey) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-      status: 401,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+  // OAuthコールバックは認証スキップ（Googleからのリダイレクト）
+  const url = new URL(request.url);
+  const isOAuthCallback = url.pathname === '/api/calendar' && url.searchParams.get('action') === 'callback';
+
+  if (!isOAuthCallback) {
+    // AUTH_KEY検証
+    const authHeader = request.headers.get('Authorization');
+    const expectedKey = `Bearer ${env.AUTH_KEY}`;
+    if (!authHeader || authHeader !== expectedKey) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
   }
 
   const response = await next();

@@ -71,6 +71,12 @@
 
   <!-- ダッシュボード -->
   <div class="dashboard" id="dashboard">
+    <!-- 今日の予定（Googleカレンダー） -->
+    <div class="section" id="sectionCalendar" style="display:none;">
+      <div class="section-header">📅 今日の予定 <span id="calendarCount" style="color:var(--muted);font-weight:400;font-size:12px;"></span></div>
+      <div class="section-body" id="calendarList"></div>
+    </div>
+
     <!-- 今日の記録 -->
     <div class="section" id="sectionToday">
       <div class="section-header">📝 今日の記録 <span id="todayCount" style="color:var(--muted);font-weight:400;font-size:12px;"></span></div>

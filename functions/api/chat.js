@@ -37,7 +37,7 @@ export async function onRequestPost({ request, env }) {
     env.DB.prepare(`SELECT datetime, mood, tag, text FROM entries ORDER BY datetime DESC LIMIT 10`).all(),
     env.DB.prepare(`SELECT text, tag, priority, due FROM todos WHERE status = 'open' ORDER BY created_at DESC LIMIT 10`).all(),
     env.DB.prepare(`SELECT title, author, rating, status, note FROM books ORDER BY datetime DESC LIMIT 5`).all(),
-    env.DB.prepare(`SELECT key, value FROM settings WHERE key IN ('char_system_prompt', 'char_name')`).all(),
+    env.DB.prepare(`SELECT key, value FROM settings WHERE key IN ('char_system_prompt', 'char_name', 'gcal_access_token', 'gcal_refresh_token', 'gcal_token_expires')`).all(),
   ]);
 
   // settings をマップ化
@@ -45,6 +45,53 @@ export async function onRequestPost({ request, env }) {
   settingsRows.forEach(r => { settings[r.key] = r.value; });
 
   const systemPrompt = settings['char_system_prompt'] || DEFAULT_SYSTEM_PROMPT;
+
+  // カレンダー予定を取得（連携済みの場合のみ）
+  let calendarText = '';
+  if (settings.gcal_refresh_token && settings.gcal_access_token) {
+    try {
+      let accessToken = settings.gcal_access_token;
+      if (settings.gcal_token_expires && Date.now() >= Number(settings.gcal_token_expires)) {
+        // トークンリフレッシュ
+        const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            client_id: env.GOOGLE_CLIENT_ID,
+            client_secret: env.GOOGLE_CLIENT_SECRET,
+            refresh_token: settings.gcal_refresh_token,
+            grant_type: 'refresh_token',
+          }),
+        });
+        if (tokenRes.ok) {
+          const td = await tokenRes.json();
+          accessToken = td.access_token;
+        }
+      }
+      const now = new Date();
+      const jst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+      const ymd = jst.toISOString().slice(0, 10);
+      const timeMin = new Date(ymd + 'T00:00:00+09:00');
+      const timeMax = new Date(ymd + 'T00:00:00+09:00');
+      timeMax.setDate(timeMax.getDate() + 2); // 今日+明日
+
+      const params = new URLSearchParams({
+        timeMin: timeMin.toISOString(), timeMax: timeMax.toISOString(),
+        singleEvents: 'true', orderBy: 'startTime', maxResults: '20', timeZone: 'Asia/Tokyo',
+      });
+      const calRes = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events?${params}`, {
+        headers: { 'Authorization': `Bearer ${accessToken}` },
+      });
+      if (calRes.ok) {
+        const calData = await calRes.json();
+        const events = (calData.items || []).map(ev => {
+          const start = ev.start?.dateTime?.slice(11, 16) || '終日';
+          return `- ${ev.start?.dateTime?.slice(0, 10) || ev.start?.date} ${start} ${ev.summary || '(無題)'}`;
+        });
+        if (events.length) calendarText = `\n\n今日〜明日のカレンダー予定:\n${events.join('\n')}`;
+      }
+    } catch (_) { /* カレンダー取得失敗は無視 */ }
+  }
 
   const contextText = `
 今日の日付: ${today}
@@ -56,7 +103,7 @@ ${recentEntries.map((e) => `- ${e.datetime} [mood:${e.mood}] [tag:${e.tag}] ${e.
 ${openTodos.map((t) => `- [${t.priority}] ${t.text} (期限:${t.due || 'なし'}) [tag:${t.tag}]`).join('\n') || 'なし'}
 
 最近の読書:
-${recentBooks.map((b) => `- ${b.title}（${b.author}）★${b.rating} [${b.status}] ${b.note || ''}`).join('\n') || 'なし'}
+${recentBooks.map((b) => `- ${b.title}（${b.author}）★${b.rating} [${b.status}] ${b.note || ''}`).join('\n') || 'なし'}${calendarText}
 `.trim();
 
   try {

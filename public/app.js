@@ -22,6 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
   setNow();
   loadDashboard();
   loadTopTags();
+  loadCalendar();
 });
 
 // ==============================
@@ -424,6 +425,67 @@ function renderStreak(data, today) {
     cells.push(`<div class="streak-cell ${map[key] ? 'has-entry' : ''}" title="${key}"></div>`);
   }
   el.innerHTML = cells.join('');
+}
+
+// ==============================
+// Googleカレンダー
+// ==============================
+async function loadCalendar() {
+  const section = document.getElementById('sectionCalendar');
+  const el = document.getElementById('calendarList');
+  const countEl = document.getElementById('calendarCount');
+  try {
+    const data = await apiFetch('/api/calendar?action=today');
+    if (!data.connected) {
+      // 未連携: 連携ボタンを表示
+      section.style.display = '';
+      el.innerHTML = `<div class="empty-msg">
+        <button class="btn-submit" onclick="connectCalendar()" style="width:auto;padding:8px 20px;font-size:13px;">📅 Googleカレンダーを連携</button>
+      </div>`;
+      countEl.textContent = '';
+      return;
+    }
+    if (!data.events.length) {
+      section.style.display = '';
+      el.innerHTML = '<div class="empty-msg">今日の予定はありません</div>';
+      countEl.textContent = '';
+      return;
+    }
+    section.style.display = '';
+    countEl.textContent = `${data.events.length}件`;
+    el.innerHTML = data.events.map(ev => {
+      const time = ev.allDay ? '終日' : formatEventTime(ev.start, ev.end);
+      return `<div class="entry-item">
+        <div class="entry-time">${time}</div>
+        <div class="entry-content">
+          <div class="entry-text">${escHtml(ev.summary)}</div>
+          ${ev.location ? `<div class="entry-tag">📍 ${escHtml(ev.location)}</div>` : ''}
+        </div>
+      </div>`;
+    }).join('');
+  } catch (e) {
+    // カレンダーAPI未設定 → 非表示のまま
+    section.style.display = 'none';
+  }
+}
+
+function formatEventTime(start, end) {
+  const s = start.slice(11, 16);
+  const e = end.slice(11, 16);
+  return s && e ? `${s}〜${e}` : s || '';
+}
+
+async function connectCalendar() {
+  try {
+    const data = await apiFetch('/api/calendar?action=auth');
+    if (data.url) {
+      window.location.href = data.url;
+    } else {
+      showToast('カレンダー連携URLを取得できませんでした');
+    }
+  } catch (e) {
+    showToast(`エラー: ${e.message}`);
+  }
 }
 
 // ==============================
