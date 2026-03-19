@@ -45,8 +45,9 @@ async function searchByIsbn(isbn) {
 // タイトル検索: 国立国会図書館 OpenSearch API（無料・APIキー不要・無制限）
 async function searchByTitle(q) {
   try {
-    // OpenSearch (RSS) 形式 - SRU より単純なXML
-    const ndlUrl = `https://ndlsearch.ndl.go.jp/api/opensearch?q=${encodeURIComponent(q)}&cnt=10&mediatype=1`;
+    // OpenSearch (RSS): title= でタイトル検索、dpid=iss-ndl-opac で図書に限定
+    // スペース区切りでAND検索になる
+    const ndlUrl = `https://ndlsearch.ndl.go.jp/api/opensearch?title=${encodeURIComponent(q)}&cnt=10&dpid=iss-ndl-opac`;
 
     const res = await fetch(ndlUrl, {
       headers: { 'User-Agent': 'LifeOS/1.0 (personal-app)' },
