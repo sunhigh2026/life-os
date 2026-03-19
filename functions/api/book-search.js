@@ -16,7 +16,7 @@ export async function onRequestGet({ request }) {
   const query = isIsbn ? `isbn:${q.replace(/[\-\s]/g, '')}` : q;
 
   try {
-    const apiUrl = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=10&langRestrict=ja`;
+    const apiUrl = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=10`;
     const res = await fetch(apiUrl);
     const data = await res.json();
 

@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>履歴 - Life OS</title>
+  <link rel="stylesheet" href="/style.css">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#fafafa">
+</head>
+<body>
+<div class="app-wrapper">
+
+  <!-- 検索バー -->
+  <div class="search-area">
+    <div class="row">
+      <input type="date" id="fromDate" style="flex:1;">
+      <span style="color:var(--muted);padding:0 4px;">〜</span>
+      <input type="date" id="toDate" style="flex:1;">
+      <button class="btn-now" onclick="search()">検索</button>
+    </div>
+    <div class="row">
+      <input type="text" id="keyword" placeholder="キーワードで絞り込み（任意）" style="flex:1;">
+    </div>
+  </div>
+
+  <!-- 結果一覧 -->
+  <div id="resultList" class="dashboard"></div>
+
+</div>
+
+<!-- 編集モーダル -->
+<div id="editModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:400;display:none;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:16px;padding:20px;width:90%;max-width:480px;display:flex;flex-direction:column;gap:12px;">
+    <div style="font-weight:600;font-size:15px;">日記を編集</div>
+    <input type="hidden" id="editId">
+    <input type="datetime-local" id="editDatetime">
+    <input type="text" id="editTag" placeholder="タグ">
+    <div style="display:flex;gap:6px;" id="editMoodRow">
+      <span style="font-size:12px;color:var(--muted);align-self:center;">気分:</span>
+      <button class="mood-btn" data-mood="1" onclick="setEditMood(1)">😢</button>
+      <button class="mood-btn" data-mood="2" onclick="setEditMood(2)">😞</button>
+      <button class="mood-btn" data-mood="3" onclick="setEditMood(3)">😐</button>
+      <button class="mood-btn" data-mood="4" onclick="setEditMood(4)">🙂</button>
+      <button class="mood-btn" data-mood="5" onclick="setEditMood(5)">😊</button>
+      <button class="mood-btn" data-mood="6" onclick="setEditMood(6)">🤩</button>
+    </div>
+    <textarea id="editText" rows="4" style="resize:vertical;font-family:inherit;font-size:14px;border:1px solid var(--border);border-radius:10px;padding:8px 12px;"></textarea>
+    <div style="display:flex;gap:8px;">
+      <button class="btn-submit" onclick="saveEdit()">保存</button>
+      <button class="btn-submit" onclick="closeEdit()" style="background:#aaa;">キャンセル</button>
+    </div>
+  </div>
+</div>
+
+<!-- タブバー -->
+<nav class="tab-bar">
+  <a href="/" class="tab-item">
+    <span class="tab-icon">🏠</span>Home
+  </a>
+  <a href="/books.html" class="tab-item">
+    <span class="tab-icon">📚</span>読書
+  </a>
+  <a href="/chat.html" class="tab-item">
+    <span class="tab-icon">💬</span>Chat
+  </a>
+</nav>
+
+<div id="toast"></div>
+
+<script>
+const AUTH_KEY = 'hidapia2026';
+const MOODS = { 1: '😢', 2: '😞', 3: '😐', 4: '🙂', 5: '😊', 6: '🤩' };
+let editMood = null;
+let allEntries = [];
+
+// 初期化: 今月を表示
+document.addEventListener('DOMContentLoaded', () => {
+  const today = new Date().toISOString().slice(0, 10);
+  const firstOfMonth = today.slice(0, 7) + '-01';
+  document.getElementById('fromDate').value = firstOfMonth;
+  document.getElementById('toDate').value = today;
+  search();
+});
+
+async function apiFetch(path, options = {}) {
+  const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${AUTH_KEY}`, ...(options.headers || {}) };
+  const res = await fetch(path, { ...options, headers });
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `HTTP ${res.status}`);
+  return res.json();
+}
+
+async function search() {
+  const from = document.getElementById('fromDate').value;
+  const to = document.getElementById('toDate').value;
+  const keyword = document.getElementById('keyword').value.trim().toLowerCase();
+
+  try {
+    const params = new URLSearchParams({ limit: '200' });
+    if (from) params.set('from', from);
+    if (to) params.set('to', to);
+    const data = await apiFetch(`/api/entry?${params}`);
+    allEntries = data.entries;
+    const filtered = keyword
+      ? allEntries.filter(e => (e.text || '').toLowerCase().includes(keyword) || (e.tag || '').toLowerCase().includes(keyword))
+      : allEntries;
+    renderEntries(filtered);
+  } catch (e) {
+    showToast(`エラー: ${e.message}`);
+  }
+}
+
+function renderEntries(entries) {
+  const el = document.getElementById('resultList');
+  if (!entries.length) {
+    el.innerHTML = '<div class="empty-msg" style="padding:32px 0;">この期間の記録はありません</div>';
+    return;
+  }
+
+  // 日付ごとにグループ化
+  const groups = {};
+  entries.forEach(e => {
+    const d = e.datetime.slice(0, 10);
+    if (!groups[d]) groups[d] = [];
+    groups[d].push(e);
+  });
+
+  el.innerHTML = Object.entries(groups).map(([date, items]) => `
+    <div class="section">
+      <div class="section-header">${date}（${items.length}件）</div>
+      <div class="section-body">
+        ${items.map(e => `
+          <div class="entry-item">
+            <div class="entry-time">${e.datetime.slice(11, 16)}</div>
+            <div class="entry-mood">${e.mood ? MOODS[e.mood] : ''}</div>
+            <div class="entry-content">
+              ${e.tag ? `<div class="entry-tag">#${e.tag}</div>` : ''}
+              <div class="entry-text">${escHtml(e.text || '')}</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;">
+              <button onclick="openEdit(${JSON.stringify(e).replace(/"/g, '&quot;')})"
+                style="font-size:12px;padding:4px 8px;border:1px solid var(--border);border-radius:8px;background:#f5f5f5;cursor:pointer;">✏️</button>
+              <button onclick="deleteEntry('${e.id}', this)"
+                style="font-size:12px;padding:4px 8px;border:1px solid #ffcdd2;border-radius:8px;background:#fff5f5;cursor:pointer;color:#e53935;">🗑</button>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `).join('');
+}
+
+// 編集
+function openEdit(entry) {
+  editMood = entry.mood;
+  document.getElementById('editId').value = entry.id;
+  document.getElementById('editDatetime').value = entry.datetime.slice(0, 16);
+  document.getElementById('editTag').value = entry.tag || '';
+  document.getElementById('editText').value = entry.text || '';
+  document.querySelectorAll('#editMoodRow .mood-btn').forEach(b => {
+    b.classList.toggle('selected', parseInt(b.dataset.mood) === entry.mood);
+  });
+  document.getElementById('editModal').style.display = 'flex';
+}
+
+function closeEdit() {
+  document.getElementById('editModal').style.display = 'none';
+}
+
+function setEditMood(v) {
+  editMood = v;
+  document.querySelectorAll('#editMoodRow .mood-btn').forEach(b => {
+    b.classList.toggle('selected', parseInt(b.dataset.mood) === v);
+  });
+}
+
+async function saveEdit() {
+  const id = document.getElementById('editId').value;
+  const datetime = document.getElementById('editDatetime').value;
+  const tag = document.getElementById('editTag').value.trim() || null;
+  const text = document.getElementById('editText').value.trim();
+
+  try {
+    await apiFetch('/api/entry', {
+      method: 'PUT',
+      body: JSON.stringify({ id, datetime, mood: editMood, tag, text }),
+    });
+    showToast('✅ 更新しました');
+    closeEdit();
+    search();
+  } catch (e) {
+    showToast(`エラー: ${e.message}`);
+  }
+}
+
+// 削除
+async function deleteEntry(id, btn) {
+  if (!confirm('この記録を削除しますか？')) return;
+  btn.disabled = true;
+  try {
+    await apiFetch(`/api/entry?id=${id}`, { method: 'DELETE' });
+    showToast('🗑 削除しました');
+    search();
+  } catch (e) {
+    btn.disabled = false;
+    showToast(`エラー: ${e.message}`);
+  }
+}
+
+// Toast
+let toastTimer;
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2000);
+}
+
+function escHtml(str) {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+</script>
+</body>
+</html>
