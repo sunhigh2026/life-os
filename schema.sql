@@ -66,9 +66,19 @@ CREATE TABLE IF NOT EXISTS settings (
   value TEXT
 );
 
+-- フィットネス（歩数・運動時間）
+CREATE TABLE IF NOT EXISTS fitness (
+  id TEXT PRIMARY KEY,
+  date TEXT NOT NULL UNIQUE,
+  steps INTEGER,
+  active_minutes INTEGER,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
 -- インデックス
 CREATE INDEX IF NOT EXISTS idx_entries_datetime ON entries(datetime);
 CREATE INDEX IF NOT EXISTS idx_todos_status ON todos(status);
 CREATE INDEX IF NOT EXISTS idx_todos_due ON todos(due);
 CREATE INDEX IF NOT EXISTS idx_books_datetime ON books(datetime);
 CREATE INDEX IF NOT EXISTS idx_book_notes_book_id ON book_notes(book_id);
+CREATE INDEX IF NOT EXISTS idx_fitness_date ON fitness(date);

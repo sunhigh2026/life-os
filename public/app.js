@@ -24,6 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
   loadTopTags();
   loadCalendar();
   loadMenstrualStats();
+  loadFitness();
 });
 
 // ==============================
@@ -426,6 +427,24 @@ function renderStreak(data, today) {
     cells.push(`<div class="streak-cell ${map[key] ? 'has-entry' : ''}" title="${key}"></div>`);
   }
   el.innerHTML = cells.join('');
+}
+
+// ==============================
+// フィットネス
+// ==============================
+async function loadFitness() {
+  try {
+    const data = await apiFetch('/api/fitness?days=1');
+    const section = document.getElementById('sectionFitness');
+    const el = document.getElementById('fitnessInfo');
+    if (data.today) {
+      section.style.display = '';
+      const parts = [];
+      if (data.today.steps) parts.push(`🚶 ${data.today.steps.toLocaleString()} 歩`);
+      if (data.today.active_minutes) parts.push(`🏃 ${data.today.active_minutes} 分`);
+      el.innerHTML = parts.join('<span style="color:var(--border);">|</span>');
+    }
+  } catch (_) {}
 }
 
 // ==============================
