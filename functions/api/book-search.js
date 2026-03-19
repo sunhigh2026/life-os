@@ -6,7 +6,7 @@ function json(data, status = 200) {
 }
 
 // GET /api/book-search?q=ISBN or title
-export async function onRequestGet({ request }) {
+export async function onRequestGet({ request, env }) {
   const url = new URL(request.url);
   const q = url.searchParams.get('q');
   if (!q) return json({ error: 'q parameter required' }, 400);
