@@ -84,9 +84,75 @@
     </div>
   </div>
 
-  <!-- 最近の読書 -->
+  <!-- ステータスフィルター -->
+  <div class="filter-tabs" id="bookFilterTabs">
+    <button class="filter-tab active" id="book-tab-all"     onclick="setBookFilter('all')">すべて</button>
+    <button class="filter-tab"        id="book-tab-want"    onclick="setBookFilter('want')">📌 読みたい</button>
+    <button class="filter-tab"        id="book-tab-reading" onclick="setBookFilter('reading')">📖 読書中</button>
+    <button class="filter-tab"        id="book-tab-done"    onclick="setBookFilter('done')">✅ 読了</button>
+  </div>
+
+  <!-- 読書一覧 -->
   <div class="book-list" id="recentBooks"></div>
 
+</div>
+
+<!-- 書籍編集モーダル -->
+<div id="bookEditModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:400;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:16px;padding:20px;width:90%;max-width:480px;display:flex;flex-direction:column;gap:12px;max-height:85dvh;overflow-y:auto;">
+    <div style="font-weight:600;font-size:15px;">読書記録を編集</div>
+    <input type="hidden" id="editBookId">
+
+    <div style="display:flex;gap:12px;align-items:flex-start;">
+      <div id="editBookCover"></div>
+      <div style="flex:1;">
+        <div style="font-weight:600;font-size:14px;" id="editBookTitle"></div>
+        <div style="color:var(--muted);font-size:12px;" id="editBookAuthor"></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="form-label">媒体</div>
+      <div class="medium-btns">
+        <button class="option-btn" data-edit-medium="book"    onclick="selectEditMedium('book')">📖 本</button>
+        <button class="option-btn" data-edit-medium="kindle"  onclick="selectEditMedium('kindle')">📱 Kindle</button>
+        <button class="option-btn" data-edit-medium="audible" onclick="selectEditMedium('audible')">🎧 Audible</button>
+        <button class="option-btn" data-edit-medium="other"   onclick="selectEditMedium('other')">その他</button>
+      </div>
+    </div>
+
+    <div>
+      <div class="form-label">ステータス</div>
+      <div class="status-btns">
+        <button class="option-btn" data-edit-status="want"    onclick="selectEditStatus('want')">📌 読みたい</button>
+        <button class="option-btn" data-edit-status="reading" onclick="selectEditStatus('reading')">📖 読書中</button>
+        <button class="option-btn" data-edit-status="done"    onclick="selectEditStatus('done')">✅ 読了</button>
+      </div>
+    </div>
+
+    <div>
+      <div class="form-label">評価</div>
+      <div class="star-input" id="editStarInput">
+        <button class="star-btn" data-edit-star="1" onclick="selectEditStar(1)">★</button>
+        <button class="star-btn" data-edit-star="2" onclick="selectEditStar(2)">★</button>
+        <button class="star-btn" data-edit-star="3" onclick="selectEditStar(3)">★</button>
+        <button class="star-btn" data-edit-star="4" onclick="selectEditStar(4)">★</button>
+        <button class="star-btn" data-edit-star="5" onclick="selectEditStar(5)">★</button>
+      </div>
+    </div>
+
+    <div>
+      <div class="form-label">感想・メモ</div>
+      <textarea id="editBookNote" rows="3"
+        style="width:100%;resize:vertical;font-family:inherit;font-size:14px;border:1px solid var(--border);border-radius:10px;padding:8px 12px;"
+        placeholder="感想（任意）"></textarea>
+    </div>
+
+    <div style="display:flex;gap:8px;">
+      <button class="btn-submit" onclick="saveBookEdit()">保存</button>
+      <button class="btn-submit" onclick="closeBookEdit()" style="background:#aaa;">キャンセル</button>
+    </div>
+  </div>
 </div>
 
 <!-- タブバー -->

@@ -451,6 +451,14 @@ input[type="datetime-local"] { flex: 1; }
   gap: 8px;
 }
 
+/* Book status filter tabs */
+#bookFilterTabs {
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+#bookFilterTabs::-webkit-scrollbar { display: none; }
+#bookFilterTabs .filter-tab { white-space: nowrap; padding: 10px 12px; font-size: 12px; }
+
 .book-list { padding: 12px 16px; display: flex; flex-direction: column; gap: 12px; }
 
 .book-card {

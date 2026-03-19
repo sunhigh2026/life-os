@@ -13,6 +13,8 @@ let selectedRating = 0;
 let html5Qr = null;
 let noteRecognition = null;
 let isNoteRecording = false;
+let currentBookFilter = 'all';
+let editRating = 0;
 
 // ==============================
 // 初期化
@@ -220,11 +222,22 @@ function selectManual() {
 }
 
 // ==============================
-// 最近の読書一覧
+// ステータスフィルター
+// ==============================
+function setBookFilter(status) {
+  currentBookFilter = status;
+  document.querySelectorAll('#bookFilterTabs .filter-tab').forEach(b => b.classList.remove('active'));
+  document.getElementById(`book-tab-${status}`).classList.add('active');
+  loadRecentBooks();
+}
+
+// ==============================
+// 読書一覧
 // ==============================
 async function loadRecentBooks() {
   try {
-    const data = await apiFetch('/api/book?limit=20');
+    const param = currentBookFilter !== 'all' ? `&status=${currentBookFilter}` : '';
+    const data = await apiFetch(`/api/book?limit=100${param}`);
     renderRecentBooks(data.books);
   } catch {}
 }
@@ -232,24 +245,97 @@ async function loadRecentBooks() {
 function renderRecentBooks(books) {
   const el = document.getElementById('recentBooks');
   if (!books.length) {
-    el.innerHTML = '<div class="empty-msg" style="padding:32px 0;">まだ読書記録がありません</div>';
+    const labels = { all: '読書記録', want: '「読みたい」の本', reading: '「読書中」の本', done: '「読了」の本' };
+    el.innerHTML = `<div class="empty-msg" style="padding:32px 0;">まだ${labels[currentBookFilter] || '読書記録'}がありません</div>`;
     return;
   }
-  const statusLabel = { want: '読みたい', reading: '読書中', done: '読了' };
-  el.innerHTML = books.map((b) => `
-    <div class="book-card">
-      ${b.cover_url
-        ? `<img class="book-cover" src="${b.cover_url}" alt="">`
-        : `<div class="book-cover-placeholder">📖</div>`}
-      <div class="book-info">
-        <div class="book-title">${escHtml(b.title || '（タイトルなし）')}</div>
-        <div class="book-author">${escHtml(b.author || '')}</div>
-        ${b.rating ? `<div class="stars">${'★'.repeat(b.rating)}${'☆'.repeat(5 - b.rating)}</div>` : ''}
-        <div><span class="book-status-badge">${statusLabel[b.status] || b.status}</span></div>
-        ${b.note ? `<div style="font-size:12px;color:var(--muted);margin-top:4px;">${escHtml(b.note)}</div>` : ''}
+  const statusLabel = { want: '📌 読みたい', reading: '📖 読書中', done: '✅ 読了' };
+  el.innerHTML = books.map((b) => {
+    const bd = encodeURIComponent(JSON.stringify(b));
+    return `
+      <div class="book-card">
+        ${b.cover_url
+          ? `<img class="book-cover" src="${b.cover_url}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="book-cover-placeholder" style="display:none;">📖</div>`
+          : `<div class="book-cover-placeholder">📖</div>`}
+        <div class="book-info">
+          <div class="book-title">${escHtml(b.title || '（タイトルなし）')}</div>
+          <div class="book-author">${escHtml(b.author || '')}</div>
+          ${b.rating ? `<div class="stars">${'★'.repeat(b.rating)}${'☆'.repeat(5 - b.rating)}</div>` : ''}
+          <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
+            <span class="book-status-badge">${statusLabel[b.status] || b.status}</span>
+            <button onclick="openBookEdit(decodeURIComponent('${bd}'))"
+              style="font-size:11px;padding:2px 8px;border:1px solid var(--border);border-radius:var(--radius-chip);background:#f5f5f5;cursor:pointer;">✏️ 編集</button>
+          </div>
+          ${b.note ? `<div style="font-size:12px;color:var(--muted);margin-top:4px;">${escHtml(b.note)}</div>` : ''}
+        </div>
       </div>
-    </div>
-  `).join('');
+    `;
+  }).join('');
+}
+
+// ==============================
+// 書籍編集モーダル
+// ==============================
+function openBookEdit(bookJson) {
+  const b = JSON.parse(bookJson);
+  document.getElementById('editBookId').value = b.id;
+  document.getElementById('editBookTitle').textContent = b.title || '';
+  document.getElementById('editBookAuthor').textContent = b.author || '';
+
+  const coverEl = document.getElementById('editBookCover');
+  coverEl.innerHTML = b.cover_url
+    ? `<img class="book-cover" src="${b.cover_url}" alt="">`
+    : `<div class="book-cover-placeholder">📖</div>`;
+
+  document.getElementById('editBookNote').value = b.note || '';
+  selectEditMedium(b.medium || 'book');
+  selectEditStatus(b.status || 'done');
+  selectEditStar(b.rating || 0);
+
+  document.getElementById('bookEditModal').style.display = 'flex';
+}
+
+function closeBookEdit() {
+  document.getElementById('bookEditModal').style.display = 'none';
+}
+
+function selectEditMedium(m) {
+  document.querySelectorAll('[data-edit-medium]').forEach(btn => {
+    btn.classList.toggle('selected', btn.dataset.editMedium === m);
+  });
+}
+
+function selectEditStatus(s) {
+  document.querySelectorAll('[data-edit-status]').forEach(btn => {
+    btn.classList.toggle('selected', btn.dataset.editStatus === s);
+  });
+}
+
+function selectEditStar(n) {
+  editRating = n;
+  document.querySelectorAll('[data-edit-star]').forEach(btn => {
+    btn.classList.toggle('filled', parseInt(btn.dataset.editStar) <= n);
+  });
+}
+
+async function saveBookEdit() {
+  const id = document.getElementById('editBookId').value;
+  const note = document.getElementById('editBookNote').value.trim() || null;
+  const status = document.querySelector('[data-edit-status].selected')?.dataset.editStatus || 'done';
+  const medium = document.querySelector('[data-edit-medium].selected')?.dataset.editMedium || 'book';
+  const rating = editRating || null;
+
+  try {
+    await apiFetch('/api/book', {
+      method: 'PUT',
+      body: JSON.stringify({ id, status, medium, rating, note }),
+    });
+    showToast('✅ 更新しました');
+    closeBookEdit();
+    loadRecentBooks();
+  } catch (e) {
+    showToast(`エラー: ${e.message}`);
+  }
 }
 
 // ==============================

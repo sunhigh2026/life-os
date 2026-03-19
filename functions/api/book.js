@@ -26,12 +26,13 @@ export async function onRequestGet({ request, env }) {
     return json({ notes: results });
   }
 
-  const { results } = await env.DB.prepare(
-    `SELECT * FROM books ORDER BY datetime DESC LIMIT ?`
-  )
-    .bind(limit)
-    .all();
+  const status = url.searchParams.get('status'); // want / reading / done / null=all
+  const query = status && status !== 'all'
+    ? `SELECT * FROM books WHERE status = ? ORDER BY datetime DESC LIMIT ?`
+    : `SELECT * FROM books ORDER BY datetime DESC LIMIT ?`;
+  const binds = status && status !== 'all' ? [status, limit] : [limit];
 
+  const { results } = await env.DB.prepare(query).bind(...binds).all();
   return json({ books: results });
 }
 
@@ -72,7 +73,7 @@ export async function onRequestPost({ request, env }) {
 // PUT /api/book
 export async function onRequestPut({ request, env }) {
   const body = await request.json();
-  const { id, status, rating, note } = body;
+  const { id, status, rating, note, medium } = body;
 
   if (!id) return json({ error: 'id required' }, 400);
 
@@ -81,7 +82,8 @@ export async function onRequestPut({ request, env }) {
 
   if (status !== undefined) { updates.push('status = ?'); values.push(status); }
   if (rating !== undefined) { updates.push('rating = ?'); values.push(rating); }
-  if (note !== undefined)   { updates.push('note = ?');   values.push(note); }
+  if (note   !== undefined) { updates.push('note = ?');   values.push(note); }
+  if (medium !== undefined) { updates.push('medium = ?'); values.push(medium); }
 
   if (updates.length === 0) return json({ error: 'no fields to update' }, 400);
 
