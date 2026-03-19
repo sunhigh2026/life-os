@@ -13,17 +13,14 @@ export async function onRequest(context) {
     return new Response(null, { status: 204, headers: corsHeaders });
   }
 
-  // GETリクエストは認証スキップ（個人利用のため、フロントから直接読み取り）
-  // POST/PUT はAUTH_KEY検証
-  if (request.method !== 'GET') {
-    const authHeader = request.headers.get('Authorization');
-    const expectedKey = `Bearer ${env.AUTH_KEY}`;
-    if (!authHeader || authHeader !== expectedKey) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+  // 全リクエストでAUTH_KEY検証
+  const authHeader = request.headers.get('Authorization');
+  const expectedKey = `Bearer ${env.AUTH_KEY}`;
+  if (!authHeader || authHeader !== expectedKey) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      status: 401,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   }
 
   const response = await next();
