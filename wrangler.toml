@@ -1,0 +1,12 @@
+name = "life-os"
+compatibility_date = "2024-01-01"
+pages_build_output_dir = "public"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "life-os-db"
+database_id = "86f24f9c-4ffc-4194-abcc-33efcb528849"
+
+[vars]
+AUTH_KEY = "<自分で決めたAPIキー>"
+GEMINI_API_KEY = "<Gemini APIキー>"

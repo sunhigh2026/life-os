@@ -1,0 +1,123 @@
+// ==============================
+// 設定
+// ==============================
+const AUTH_KEY = '<YOUR_AUTH_KEY>';
+
+// ==============================
+// 状態
+// ==============================
+let chatRecognition = null;
+let isChatRecording = false;
+
+// ==============================
+// メッセージ送信
+// ==============================
+async function sendMessage() {
+  const input = document.getElementById('chatInput');
+  const message = input.value.trim();
+  if (!message) return;
+
+  input.value = '';
+  appendMessage('user', message);
+  scrollToBottom();
+
+  const thinkingId = appendMessage('ai', '…考え中…', true);
+
+  try {
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${AUTH_KEY}`,
+      },
+      body: JSON.stringify({ message }),
+    });
+
+    const data = await res.json();
+    removeMessage(thinkingId);
+
+    if (!res.ok) {
+      appendMessage('ai', `エラー: ${data.error || 'Unknown error'}`);
+    } else {
+      appendMessage('ai', data.reply);
+    }
+  } catch (e) {
+    removeMessage(thinkingId);
+    appendMessage('ai', `通信エラー: ${e.message}`);
+  }
+
+  scrollToBottom();
+}
+
+function sendQuick(msg) {
+  document.getElementById('chatInput').value = msg;
+  sendMessage();
+}
+
+// ==============================
+// DOM操作
+// ==============================
+let msgCounter = 0;
+
+function appendMessage(role, text, isTemp = false) {
+  const id = `msg-${++msgCounter}`;
+  const el = document.createElement('div');
+  el.className = `message ${role}`;
+  el.id = id;
+  el.textContent = text;
+  if (isTemp) el.style.opacity = '0.5';
+  document.getElementById('chatMessages').appendChild(el);
+  return id;
+}
+
+function removeMessage(id) {
+  const el = document.getElementById(id);
+  if (el) el.remove();
+}
+
+function scrollToBottom() {
+  const el = document.getElementById('chatMessages');
+  el.scrollTop = el.scrollHeight;
+}
+
+// ==============================
+// 音声入力
+// ==============================
+function toggleChatVoice() {
+  if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
+    showToast('このブラウザは音声入力に対応していません');
+    return;
+  }
+  if (isChatRecording) {
+    chatRecognition.stop();
+    return;
+  }
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  chatRecognition = new SR();
+  chatRecognition.lang = 'ja-JP';
+  chatRecognition.onstart = () => {
+    isChatRecording = true;
+    document.getElementById('chatVoiceBtn').classList.add('recording');
+  };
+  chatRecognition.onresult = (e) => {
+    document.getElementById('chatInput').value += e.results[0][0].transcript;
+  };
+  chatRecognition.onend = () => {
+    isChatRecording = false;
+    document.getElementById('chatVoiceBtn').classList.remove('recording');
+    sendMessage();
+  };
+  chatRecognition.start();
+}
+
+// ==============================
+// Toast
+// ==============================
+let toastTimer;
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2000);
+}

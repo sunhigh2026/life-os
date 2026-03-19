@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>読書記録 - Life OS</title>
+  <link rel="stylesheet" href="/style.css">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#fafafa">
+</head>
+<body>
+<div class="app-wrapper">
+
+  <!-- 検索エリア -->
+  <div class="search-area">
+    <div class="row">
+      <input type="text" id="searchInput" placeholder="タイトルまたはISBNで検索…" autocomplete="off"
+             onkeydown="if(event.key==='Enter')searchBooks()">
+      <button class="btn-now" onclick="searchBooks()">検索</button>
+      <button class="btn-now" id="scanBtn" onclick="toggleScan()" style="background:#4a9eff;">📷</button>
+    </div>
+    <div id="scannerArea" style="display:none;">
+      <div id="qr-reader" style="width:100%;border-radius:12px;overflow:hidden;"></div>
+      <button class="btn-now" onclick="stopScan()" style="background:#ff6b6b;width:100%;margin-top:8px;">スキャン停止</button>
+    </div>
+  </div>
+
+  <!-- 検索結果 -->
+  <div id="searchResults" class="book-list" style="display:none;"></div>
+
+  <!-- 登録フォーム -->
+  <div id="registerArea" class="book-list" style="display:none;">
+    <div class="register-form">
+      <div style="display:flex;gap:12px;align-items:flex-start;">
+        <div id="formCover"></div>
+        <div style="flex:1;">
+          <div style="font-weight:600;font-size:15px;" id="formTitle"></div>
+          <div style="color:var(--muted);font-size:13px;" id="formAuthor"></div>
+          <div style="color:var(--muted);font-size:12px;" id="formIsbn"></div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <div class="form-label">媒体</div>
+        <div class="medium-btns">
+          <button class="option-btn selected" data-medium="book" onclick="selectMedium('book')">📖 本</button>
+          <button class="option-btn" data-medium="kindle" onclick="selectMedium('kindle')">📱 Kindle</button>
+          <button class="option-btn" data-medium="audible" onclick="selectMedium('audible')">🎧 Audible</button>
+          <button class="option-btn" data-medium="other" onclick="selectMedium('other')">その他</button>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <div class="form-label">ステータス</div>
+        <div class="status-btns">
+          <button class="option-btn" data-status="want" onclick="selectStatus('want')">📌 読みたい</button>
+          <button class="option-btn" data-status="reading" onclick="selectStatus('reading')">📖 読書中</button>
+          <button class="option-btn selected" data-status="done" onclick="selectStatus('done')">✅ 読了</button>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <div class="form-label">評価</div>
+        <div class="star-input" id="starInput">
+          <button class="star-btn" data-star="1" onclick="selectStar(1)">★</button>
+          <button class="star-btn" data-star="2" onclick="selectStar(2)">★</button>
+          <button class="star-btn" data-star="3" onclick="selectStar(3)">★</button>
+          <button class="star-btn" data-star="4" onclick="selectStar(4)">★</button>
+          <button class="star-btn" data-star="5" onclick="selectStar(5)">★</button>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <div class="form-label">感想・メモ</div>
+        <div style="position:relative;">
+          <input type="text" id="noteInput" placeholder="感想（任意）">
+          <button class="btn-voice" id="noteVoiceBtn" onclick="toggleNoteVoice()" title="音声入力">🎤</button>
+        </div>
+      </div>
+
+      <button class="btn-submit" onclick="registerBook()">📚 登録する</button>
+      <button class="btn-submit" onclick="cancelRegister()"
+              style="background:#aaa;margin-top:4px;">キャンセル</button>
+    </div>
+  </div>
+
+  <!-- 最近の読書 -->
+  <div class="book-list" id="recentBooks"></div>
+
+</div>
+
+<!-- タブバー -->
+<nav class="tab-bar">
+  <a href="/" class="tab-item">
+    <span class="tab-icon">🏠</span>Home
+  </a>
+  <a href="/books.html" class="tab-item active">
+    <span class="tab-icon">📚</span>読書
+  </a>
+  <a href="/chat.html" class="tab-item">
+    <span class="tab-icon">💬</span>Chat
+  </a>
+</nav>
+
+<div id="toast"></div>
+
+<!-- html5-qrcode (CDN) -->
+<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="/books.js"></script>
+</body>
+</html>

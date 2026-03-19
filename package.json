@@ -1,0 +1,14 @@
+{
+  "name": "life-os",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler pages dev public --compatibility-date=2024-01-01",
+    "deploy": "wrangler pages deploy public",
+    "db:init": "wrangler d1 execute life-os-db --file=schema.sql --remote",
+    "db:local": "wrangler d1 execute life-os-db --file=schema.sql --local"
+  },
+  "devDependencies": {
+    "wrangler": "^3.0.0"
+  }
+}

@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Life OS</title>
+  <link rel="stylesheet" href="/style.css">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#fafafa">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+</head>
+<body>
+<div class="app-wrapper">
+
+  <!-- 入力エリア -->
+  <div class="input-area">
+    <!-- 日時 -->
+    <div class="row datetime-row">
+      <input type="datetime-local" id="datetimeInput">
+      <button class="btn-now" onclick="setNow()">今</button>
+    </div>
+
+    <!-- テキスト入力 -->
+    <div class="text-input-row">
+      <input type="text" id="textInput" placeholder="メモを入力…" autocomplete="off" autofocus>
+      <button class="btn-voice" id="voiceBtn" onclick="toggleVoice()" title="音声入力">🎤</button>
+    </div>
+
+    <!-- モード切替 -->
+    <div class="mode-toggle">
+      <button class="mode-btn active" id="diaryBtn" onclick="setMode('diary')">📝 日記</button>
+      <button class="mode-btn" id="todoBtn" onclick="setMode('todo')">☑ ToDo</button>
+    </div>
+
+    <!-- タグ -->
+    <div class="tag-area">
+      <div class="tag-row">
+        <input type="text" id="tagInput" placeholder="タグ（任意）" autocomplete="off" oninput="onTagInput()">
+        <div id="tagDropdown" class="tag-dropdown" style="display:none;"></div>
+      </div>
+      <div class="tag-suggestions" id="tagSuggestions"></div>
+    </div>
+
+    <!-- 日記: mood -->
+    <div class="mood-row" id="moodRow">
+      <span class="mood-label">気分:</span>
+      <div class="mood-btns">
+        <button class="mood-btn" data-mood="1" onclick="selectMood(1)">😢</button>
+        <button class="mood-btn" data-mood="2" onclick="selectMood(2)">😞</button>
+        <button class="mood-btn" data-mood="3" onclick="selectMood(3)">😐</button>
+        <button class="mood-btn" data-mood="4" onclick="selectMood(4)">🙂</button>
+        <button class="mood-btn" data-mood="5" onclick="selectMood(5)">😊</button>
+        <button class="mood-btn" data-mood="6" onclick="selectMood(6)">🤩</button>
+      </div>
+    </div>
+
+    <!-- ToDo: 期限・優先度 -->
+    <div class="todo-options" id="todoOptions" style="display:none;">
+      <input type="date" id="dueDate" title="期限日">
+      <div class="priority-btns">
+        <button class="priority-btn" data-priority="high" onclick="selectPriority('high')">🔴 高</button>
+        <button class="priority-btn selected" data-priority="mid" onclick="selectPriority('mid')">🟡 普通</button>
+        <button class="priority-btn" data-priority="low" onclick="selectPriority('low')">🔵 低</button>
+      </div>
+    </div>
+
+    <!-- 記録ボタン -->
+    <button class="btn-submit" id="submitBtn" onclick="submit()">記録する</button>
+  </div>
+
+  <!-- ダッシュボード -->
+  <div class="dashboard" id="dashboard">
+    <!-- 今日の記録 -->
+    <div class="section" id="sectionToday">
+      <div class="section-header">📝 今日の記録 <span id="todayCount" style="color:var(--muted);font-weight:400;font-size:12px;"></span></div>
+      <div class="section-body" id="todayList"></div>
+    </div>
+
+    <!-- やること -->
+    <div class="section" id="sectionTodo">
+      <div class="section-header">☑ やること <span id="todoCount" style="color:var(--muted);font-weight:400;font-size:12px;"></span></div>
+      <div class="section-body" id="todoList"></div>
+    </div>
+
+    <!-- 振り返り -->
+    <div class="section" id="sectionLookback" style="display:none;">
+      <div class="section-header">📅 この日の振り返り</div>
+      <div class="section-body" id="lookbackList"></div>
+    </div>
+
+    <!-- 最近の完了 -->
+    <div class="section" id="sectionDone">
+      <div class="section-header">✅ 最近の完了</div>
+      <div class="section-body" id="doneList"></div>
+    </div>
+
+    <!-- ストリーク -->
+    <div class="section">
+      <div class="section-header">🔥 30日ストリーク</div>
+      <div class="streak-grid" id="streakGrid"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- タブバー -->
+<nav class="tab-bar">
+  <a href="/" class="tab-item active">
+    <span class="tab-icon">🏠</span>Home
+  </a>
+  <a href="/books.html" class="tab-item">
+    <span class="tab-icon">📚</span>読書
+  </a>
+  <a href="/chat.html" class="tab-item">
+    <span class="tab-icon">💬</span>Chat
+  </a>
+</nav>
+
+<!-- トースト -->
+<div id="toast"></div>
+
+<script src="/app.js"></script>
+</body>
+</html>

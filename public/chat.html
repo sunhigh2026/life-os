@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AIチャット - Life OS</title>
+  <link rel="stylesheet" href="/style.css">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#fafafa">
+</head>
+<body>
+<div class="app-wrapper" style="padding-bottom:140px;">
+
+  <!-- クイックボタン -->
+  <div class="quick-btns" style="padding-top:12px;">
+    <button class="quick-btn" onclick="sendQuick('今日何やる？')">今日何やる？</button>
+    <button class="quick-btn" onclick="sendQuick('最近の振り返りして')">振り返り</button>
+    <button class="quick-btn" onclick="sendQuick('先月の読書量は？')">先月の読書</button>
+    <button class="quick-btn" onclick="sendQuick('今の気分に合う本は？')">本のおすすめ</button>
+  </div>
+
+  <!-- メッセージ一覧 -->
+  <div class="chat-messages" id="chatMessages">
+    <div class="message ai">やあ！なんでも聞いてね〜 📝<br>日記・ToDo・読書のことを一緒に考えるよ！</div>
+  </div>
+
+  <!-- 入力エリア -->
+  <div class="chat-input-area" style="position:fixed;bottom:72px;left:0;right:0;max-width:520px;margin:0 auto;">
+    <input type="text" id="chatInput" placeholder="メッセージを入力…"
+           onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage();}">
+    <button class="btn-voice" id="chatVoiceBtn" onclick="toggleChatVoice()" title="音声入力"
+            style="position:static;transform:none;font-size:18px;">🎤</button>
+    <button class="btn-send" onclick="sendMessage()">➤</button>
+  </div>
+
+</div>
+
+<!-- タブバー -->
+<nav class="tab-bar">
+  <a href="/" class="tab-item">
+    <span class="tab-icon">🏠</span>Home
+  </a>
+  <a href="/books.html" class="tab-item">
+    <span class="tab-icon">📚</span>読書
+  </a>
+  <a href="/chat.html" class="tab-item active">
+    <span class="tab-icon">💬</span>Chat
+  </a>
+</nav>
+
+<div id="toast"></div>
+
+<script src="/chat.js"></script>
+</body>
+</html>
