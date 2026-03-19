@@ -5,7 +5,13 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(git push:*)",
-      "Bash(git rm:*)"
+      "Bash(git rm:*)",
+      "Bash(curl -s \"https://ndlsearch.ndl.go.jp/api/opensearch?q=%E7%84%A1%E5%8D%B0%E8%89%AF%E5%93%81%E3%81%AF%E4%BB%95%E7%B5%84%E3%81%BF&cnt=10&mediatype=1\")",
+      "Bash(curl -s \"https://ndlsearch.ndl.go.jp/api/opensearch?q=%E7%84%A1%E5%8D%B0%E8%89%AF%E5%93%81%E3%81%AF%E4%BB%95%E7%B5%84%E3%81%BF&cnt=10\")",
+      "Bash(curl -s \"https://ndlsearch.ndl.go.jp/api/opensearch?title=%E7%84%A1%E5%8D%B0%E8%89%AF%E5%93%81%E3%81%AF%E4%BB%95%E7%B5%84%E3%81%BF&cnt=10\")",
+      "Bash(curl -s \"https://ndlsearch.ndl.go.jp/api/opensearch?title=%E7%84%A1%E5%8D%B0%E8%89%AF%E5%93%81%E3%81%AF%E4%BB%95%E7%B5%84%E3%81%BF&cnt=10&dpid=iss-ndl-opac\")",
+      "Bash(curl -s \"https://ndlsearch.ndl.go.jp/api/opensearch?title=%E7%84%A1%E5%8D%B0%E8%89%AF%E5%93%81&cnt=10&dpid=iss-ndl-opac\")",
+      "Bash(curl -s \"https://ndlsearch.ndl.go.jp/api/opensearch?title=%E7%84%A1%E5%8D%B0%E8%89%AF%E5%93%81+%E4%BB%95%E7%B5%84%E3%81%BF&cnt=10&dpid=iss-ndl-opac\")"
     ]
   }
 }
