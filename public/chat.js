@@ -37,7 +37,7 @@ async function sendMessage() {
     removeMessage(thinkingId);
 
     if (!res.ok) {
-      appendMessage('ai', `エラー: ${data.error || 'Unknown error'}`);
+      appendMessage('ai', `エラー: ${data.error || 'Unknown error'}${data.detail ? '\n(' + data.detail + ')' : ''}`);
     } else {
       appendMessage('ai', data.reply);
     }
