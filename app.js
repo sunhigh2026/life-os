@@ -1,5 +1,6 @@
 // ★ ここにGASのWebアプリURLを貼る
-const API = 'https://script.google.com/macros/s/AKfycbza3PPMP3xZGjSxABCYDNvxndPkiVHMW5CzRFrf1fxNKkh6zqb19htBsH27JA57FCb4/exec'
+const API = 'https://script.google.com/macros/s/AKfycbza3PPMP3xZGjSxABCYDNvxndPkiVHMW5CzRFrf1fxNKkh6zqb19htBsH27JA57FCb4/exec';
+
 // ---------- state ----------
 let isTodo = false;
 let selectedMood = '';
