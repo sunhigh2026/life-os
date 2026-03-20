@@ -210,6 +210,98 @@ function setupTrigger() {
 }
 
 // ============================================================
+// 週次レポートトリガー設定（毎週日曜AM9:00）
+// ============================================================
+function setupWeeklyReportTrigger() {
+  ScriptApp.getProjectTriggers()
+    .filter(t => t.getHandlerFunction() === 'sendWeeklyReport')
+    .forEach(t => ScriptApp.deleteTrigger(t));
+
+  ScriptApp.newTrigger('sendWeeklyReport')
+    .timeBased()
+    .onWeekDay(ScriptApp.WeekDay.SUNDAY)
+    .atHour(9)
+    .create();
+
+  Logger.log('週次レポートトリガー設定完了: 毎週日曜 AM9:00');
+}
+
+// ============================================================
+// 週次レポート: Life OS API → メール送信
+// ============================================================
+function sendWeeklyReport() {
+  _sendReport('weekly');
+}
+
+function sendYearlyReport() {
+  _sendReport('yearly');
+}
+
+function _sendReport(type) {
+  const config = getConfig();
+  const props = PropertiesService.getScriptProperties();
+  const reportEmail = props.getProperty('REPORT_EMAIL') || Session.getActiveUser().getEmail();
+
+  const url = `${config.lifeOsUrl}/api/report?type=${type}`;
+  const res = UrlFetchApp.fetch(url, {
+    method: 'get',
+    headers: { 'Authorization': `Bearer ${config.authKey}` },
+    muteHttpExceptions: true,
+  });
+
+  if (res.getResponseCode() !== 200) {
+    Logger.log(`レポート取得失敗: ${res.getResponseCode()} ${res.getContentText().slice(0, 200)}`);
+    return;
+  }
+
+  const data = JSON.parse(res.getContentText());
+  const subject = type === 'weekly'
+    ? `Life OS 週次レポート (${data.period.from} 〜 ${data.period.to})`
+    : `Life OS 年間レポート (${data.period.from} 〜 ${data.period.to})`;
+
+  // HTMLメールを構築
+  const stats = data.stats;
+  const comment = data.comment || '';
+  const moodEmoji = stats.avgMood ? (stats.avgMood >= 4 ? '😊' : stats.avgMood >= 3 ? '🙂' : '😐') : '➖';
+
+  const html = `
+<div style="max-width:560px;margin:20px auto;font-family:sans-serif;">
+  <div style="background:linear-gradient(135deg,#6366f1,#8b5cf6);padding:24px;border-radius:16px 16px 0 0;text-align:center;color:#fff;">
+    <div style="font-size:32px;">📊</div>
+    <h2 style="margin:8px 0 0;">${type === 'weekly' ? '週次レポート' : '年間レポート'}</h2>
+    <p style="margin:4px 0 0;opacity:0.85;font-size:13px;">${data.period.from} 〜 ${data.period.to}</p>
+  </div>
+  <div style="background:#fff;padding:20px;border:1px solid #e5e7eb;border-top:none;">
+    <table style="width:100%;border-collapse:collapse;font-size:14px;">
+      <tr><td style="padding:8px;">📝 記録数</td><td style="padding:8px;font-weight:bold;text-align:right;">${stats.entryCount}件</td></tr>
+      <tr style="background:#f9fafb;"><td style="padding:8px;">${moodEmoji} 平均気分</td><td style="padding:8px;font-weight:bold;text-align:right;">${stats.avgMood || '—'}/6</td></tr>
+      <tr><td style="padding:8px;">✅ タスク完了</td><td style="padding:8px;font-weight:bold;text-align:right;">${stats.todoCompleted}件</td></tr>
+      <tr style="background:#f9fafb;"><td style="padding:8px;">📋 残タスク</td><td style="padding:8px;font-weight:bold;text-align:right;">${stats.todoRemaining}件</td></tr>
+      <tr><td style="padding:8px;">⚠️ 期限切れ</td><td style="padding:8px;font-weight:bold;text-align:right;">${stats.todoOverdue}件</td></tr>
+      <tr style="background:#f9fafb;"><td style="padding:8px;">📚 読了</td><td style="padding:8px;font-weight:bold;text-align:right;">${stats.booksFinished}冊</td></tr>
+      <tr><td style="padding:8px;">🚶 平均歩数</td><td style="padding:8px;font-weight:bold;text-align:right;">${stats.avgSteps ? stats.avgSteps.toLocaleString() + '歩' : '—'}</td></tr>
+      <tr style="background:#f9fafb;"><td style="padding:8px;">⚖️ 平均体重</td><td style="padding:8px;font-weight:bold;text-align:right;">${stats.avgWeight ? stats.avgWeight + 'kg' : '—'}</td></tr>
+    </table>
+    <div style="background:#fef3c7;border-radius:12px;padding:16px;margin-top:16px;">
+      <div style="font-weight:bold;color:#92400e;margin-bottom:6px;">🧸 ピアちゃんのコメント</div>
+      <p style="margin:0;color:#78350f;line-height:1.7;font-size:14px;">${comment}</p>
+    </div>
+  </div>
+  <div style="text-align:center;padding:12px;color:#9ca3af;font-size:11px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 16px 16px;">
+    Life OS — あなたの毎日をサポート
+  </div>
+</div>`;
+
+  MailApp.sendEmail({
+    to: reportEmail,
+    subject: subject,
+    htmlBody: html,
+  });
+
+  Logger.log(`${type}レポートを ${reportEmail} に送信しました`);
+}
+
+// ============================================================
 // フィットネス: スプシ → Life OS に同期
 // Health Sync等がスプシに書き出したデータを読み取りPOST
 // ============================================================
