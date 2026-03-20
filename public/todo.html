@@ -34,6 +34,14 @@
     .overdue-header { color: #e53e3e; }
     .delete-btn { background: none; border: none; font-size: 16px; cursor: pointer; padding: 4px; opacity: 0.4; }
     .delete-btn:hover { opacity: 1; }
+    .cat-badge { font-size: 10px; padding: 1px 5px; border-radius: 8px; margin-right: 4px; }
+    .cat-must { background: #fff0f0; color: #e53e3e; }
+    .cat-want { background: #f0f0ff; color: #6366f1; }
+    .decompose-btn { background: none; border: none; font-size: 14px; cursor: pointer; padding: 2px 4px; opacity: 0.5; }
+    .decompose-btn:hover { opacity: 1; }
+    .subtask-list { margin-left: 30px; padding: 4px 0; }
+    .subtask-item { font-size: 12px; color: var(--muted); padding: 2px 0; display: flex; align-items: center; gap: 4px; }
+    .subtask-add-btn { font-size: 11px; background: var(--accent); color: #fff; border: none; border-radius: 6px; padding: 2px 8px; cursor: pointer; }
   </style>
 </head>
 <body>
@@ -67,9 +75,28 @@
       <button class="priority-btn todo-edit-priority" data-priority="mid" onclick="selectEditPriority('mid')">🟡 普通</button>
       <button class="priority-btn todo-edit-priority" data-priority="low" onclick="selectEditPriority('low')">🔵 低</button>
     </div>
+    <div style="display:flex;gap:6px;">
+      <button class="category-btn todo-edit-category" data-category="must" onclick="selectEditCategory('must')" style="flex:1;padding:6px 10px;border:2px solid var(--border);border-radius:10px;background:var(--bg);cursor:pointer;font-size:12px;">🔥 Must</button>
+      <button class="category-btn todo-edit-category" data-category="want" onclick="selectEditCategory('want')" style="flex:1;padding:6px 10px;border:2px solid var(--border);border-radius:10px;background:var(--bg);cursor:pointer;font-size:12px;">💫 Want</button>
+      <button class="category-btn todo-edit-category selected" data-category="" onclick="selectEditCategory('')" style="flex:1;padding:6px 10px;border:2px solid var(--accent);border-radius:10px;background:#eaf3ff;cursor:pointer;font-size:12px;">なし</button>
+    </div>
     <div style="display:flex;gap:8px;">
       <button class="btn-submit todo-mode" onclick="saveEdit()">保存</button>
       <button class="btn-submit" onclick="closeEdit()" style="background:#aaa;">キャンセル</button>
+    </div>
+  </div>
+</div>
+
+<!-- タスク分解モーダル -->
+<div id="decomposeModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:400;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:16px;padding:20px;width:90%;max-width:480px;display:flex;flex-direction:column;gap:12px;">
+    <div style="font-weight:600;font-size:15px;">🧩 タスク分解</div>
+    <div id="decomposeOriginal" style="font-size:13px;color:var(--muted);"></div>
+    <div id="decomposeResult" style="display:flex;flex-direction:column;gap:6px;"></div>
+    <div id="decomposeComment" style="font-size:12px;color:#e91e8a;"></div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn-submit todo-mode" id="decomposeAddBtn" onclick="addDecomposedTasks()" style="display:none;">すべて追加</button>
+      <button class="btn-submit" onclick="closeDecompose()" style="background:#aaa;">閉じる</button>
     </div>
   </div>
 </div>
@@ -102,6 +129,8 @@ const AUTH_KEY = 'hidapia2026';
 let currentView = 'smart';
 let allTodos = [];
 let aiSuggestions = null;
+let decomposedTasks = [];
+let decomposeSourceId = null;
 
 document.addEventListener('DOMContentLoaded', () => load());
 
@@ -170,9 +199,6 @@ function render() {
   const weekEnd = new Date(today);
   weekEnd.setDate(weekEnd.getDate() + (7 - weekEnd.getDay())); // 次の日曜
   const weekEndStr = weekEnd.toISOString().slice(0, 10);
-  const nextWeekEnd = new Date(weekEnd);
-  nextWeekEnd.setDate(nextWeekEnd.getDate() + 7);
-  const nextWeekEndStr = nextWeekEnd.toISOString().slice(0, 10);
 
   // グループ分け
   const overdue = open.filter(t => t.due && t.due < today);
@@ -238,6 +264,9 @@ function renderTodoItem(t, today, showDone = false) {
   const priorityLabel = { high: '高', mid: '普通', low: '低' }[priority];
   const isDone = t.status === 'done';
   const td = encodeURIComponent(JSON.stringify(t));
+  const categoryBadge = t.category === 'must' ? '<span class="cat-badge cat-must">🔥Must</span>'
+    : t.category === 'want' ? '<span class="cat-badge cat-want">💫Want</span>'
+    : '';
 
   return `
     <div class="todo-item" style="${isDone ? 'opacity:0.6;' : ''}">
@@ -247,19 +276,108 @@ function renderTodoItem(t, today, showDone = false) {
         ${isDone ? '✅' : ''}
       </div>
       <div class="todo-content">
-        <div class="todo-text" style="${isDone ? 'text-decoration:line-through;' : ''}">${escHtml(t.text)}</div>
+        <div class="todo-text" style="${isDone ? 'text-decoration:line-through;' : ''}">${categoryBadge}${escHtml(t.text)}</div>
         <div class="todo-meta ${overdue ? 'overdue' : ''}">
           ${t.due ? `📅 ${t.due}${overdue ? ' 期限超過！' : ''}` : ''}
           ${t.tag ? ` #${t.tag}` : ''}
           ${isDone && t.done_at ? ` ✅ ${t.done_at.slice(0, 10)}` : ''}
         </div>
       </div>
+      ${!isDone ? `<button class="decompose-btn" onclick="event.stopPropagation();decomposeTodo('${t.id}','${escAttr(t.text)}')" title="タスク分解">🧩</button>` : ''}
       ${!isDone ? `<div class="priority-badge ${priority}" style="cursor:pointer;" onclick="openEdit(decodeURIComponent('${td}'))">${priorityLabel} ✏️</div>` : ''}
       <button class="delete-btn" onclick="deleteTodo('${t.id}')" title="削除">🗑</button>
     </div>
   `;
 }
 
+// ==============================
+// タスク分解
+// ==============================
+async function decomposeTodo(id, text) {
+  decomposeSourceId = id;
+  const modal = document.getElementById('decomposeModal');
+  const result = document.getElementById('decomposeResult');
+  const comment = document.getElementById('decomposeComment');
+  const addBtn = document.getElementById('decomposeAddBtn');
+
+  document.getElementById('decomposeOriginal').textContent = `元タスク: ${text}`;
+  result.innerHTML = '<div style="text-align:center;color:var(--muted);font-size:13px;">🐾 分解中...</div>';
+  comment.textContent = '';
+  addBtn.style.display = 'none';
+  modal.style.display = 'flex';
+
+  try {
+    const data = await apiFetch('/api/todo-decompose', {
+      method: 'POST',
+      body: JSON.stringify({ id, text }),
+    });
+
+    decomposedTasks = data.subtasks || [];
+    if (decomposedTasks.length) {
+      result.innerHTML = decomposedTasks.map((st, i) => `
+        <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:#f8f8f8;border-radius:8px;">
+          <input type="checkbox" class="decompose-check" data-idx="${i}" checked>
+          <span style="flex:1;font-size:13px;">${escHtml(st.text)}</span>
+          ${st.due ? `<span style="font-size:11px;color:var(--muted);">📅${st.due}</span>` : ''}
+        </label>
+      `).join('');
+      addBtn.style.display = '';
+    } else {
+      result.innerHTML = '<div style="text-align:center;color:var(--muted);font-size:13px;">分解できませんでした</div>';
+    }
+
+    if (data.comment) {
+      comment.textContent = `🐾 ${data.comment}`;
+    }
+  } catch (e) {
+    result.innerHTML = `<div style="color:#e53e3e;font-size:13px;">エラー: ${e.message}</div>`;
+  }
+}
+
+async function addDecomposedTasks() {
+  const checks = document.querySelectorAll('.decompose-check');
+  const selected = [];
+  checks.forEach(c => {
+    if (c.checked) selected.push(decomposedTasks[parseInt(c.dataset.idx)]);
+  });
+
+  if (!selected.length) { showToast('追加するタスクを選んでね'); return; }
+
+  const source = allTodos.find(t => t.id === decomposeSourceId);
+  const datetime = new Date().toISOString().slice(0, 19);
+  let added = 0;
+
+  for (const st of selected) {
+    try {
+      await apiFetch('/api/todo', {
+        method: 'POST',
+        body: JSON.stringify({
+          datetime,
+          text: st.text,
+          tag: source?.tag || null,
+          priority: source?.priority || 'mid',
+          due: st.due || null,
+          category: source?.category || null,
+        }),
+      });
+      added++;
+    } catch (_) {}
+  }
+
+  showToast(`✅ ${added}件のサブタスクを追加しました`);
+  closeDecompose();
+  await load();
+}
+
+function closeDecompose() {
+  document.getElementById('decomposeModal').style.display = 'none';
+  decomposedTasks = [];
+  decomposeSourceId = null;
+}
+
+// ==============================
+// 完了・復帰・削除
+// ==============================
 async function completeTodo(id, el) {
   el.style.opacity = '0.5';
   try {
@@ -286,6 +404,9 @@ async function deleteTodo(id) {
   } catch (e) { showToast(`エラー: ${e.message}`); }
 }
 
+// ==============================
+// 編集モーダル
+// ==============================
 function openEdit(todoJson) {
   const t = JSON.parse(todoJson);
   document.getElementById('todoEditId').value = t.id;
@@ -295,6 +416,7 @@ function openEdit(todoJson) {
   document.querySelectorAll('.todo-edit-priority').forEach(b => {
     b.classList.toggle('selected', b.dataset.priority === (t.priority || 'mid'));
   });
+  selectEditCategory(t.category || '');
   document.getElementById('todoEditModal').style.display = 'flex';
 }
 
@@ -306,20 +428,33 @@ function selectEditPriority(p) {
   });
 }
 
+function selectEditCategory(c) {
+  document.querySelectorAll('.todo-edit-category').forEach(btn => {
+    const match = btn.dataset.category === c;
+    btn.classList.toggle('selected', match);
+    btn.style.borderColor = match ? 'var(--accent)' : 'var(--border)';
+    btn.style.background = match ? '#eaf3ff' : 'var(--bg)';
+  });
+}
+
 async function saveEdit() {
   const id = document.getElementById('todoEditId').value;
   const text = document.getElementById('todoEditText').value.trim();
   const tag = document.getElementById('todoEditTag').value.trim() || null;
   const due = document.getElementById('todoEditDue').value || null;
   const priority = document.querySelector('.todo-edit-priority.selected')?.dataset.priority || 'mid';
+  const category = document.querySelector('.todo-edit-category.selected')?.dataset.category || null;
   try {
-    await apiFetch('/api/todo', { method: 'PUT', body: JSON.stringify({ id, text, tag, due, priority }) });
+    await apiFetch('/api/todo', { method: 'PUT', body: JSON.stringify({ id, text, tag, due, priority, category }) });
     showToast('✅ 更新しました');
     closeEdit();
     await load();
   } catch (e) { showToast(`エラー: ${e.message}`); }
 }
 
+// ==============================
+// ユーティリティ
+// ==============================
 let toastTimer;
 function showToast(msg) {
   const el = document.getElementById('toast');
@@ -331,6 +466,10 @@ function showToast(msg) {
 
 function escHtml(str) {
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function escAttr(str) {
+  return str.replace(/'/g, "\\'").replace(/"/g, '&quot;');
 }
 </script>
 </body>

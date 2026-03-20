@@ -13,7 +13,29 @@
       "Bash(curl -s \"https://ndlsearch.ndl.go.jp/api/opensearch?title=%E7%84%A1%E5%8D%B0%E8%89%AF%E5%93%81&cnt=10&dpid=iss-ndl-opac\")",
       "Bash(curl -s \"https://ndlsearch.ndl.go.jp/api/opensearch?title=%E7%84%A1%E5%8D%B0%E8%89%AF%E5%93%81+%E4%BB%95%E7%B5%84%E3%81%BF&cnt=10&dpid=iss-ndl-opac\")",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"https://cover.openbd.jp/9784041025376.jpg\")",
-      "Bash(curl -s -o /dev/null -w \"%{http_code}\" -L \"https://books.google.com/books/content?vid=isbn:9784041025376&printsec=frontcover&img=1&zoom=1\")"
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" -L \"https://books.google.com/books/content?vid=isbn:9784041025376&printsec=frontcover&img=1&zoom=1\")",
+      "Bash(/c/Users/ocura/AppData/Roaming/nvm/v22.22.1/npx.cmd wrangler:*)",
+      "Bash(where.exe node:*)",
+      "Read(//c/Users/ocura/AppData/Roaming/**)",
+      "Bash(cmd.exe /c \"where node\")",
+      "Bash(cmd.exe /c \"where npx\")",
+      "Bash(powershell.exe -Command \"Get-Command npx | Select-Object -ExpandProperty Source\")",
+      "Bash(powershell.exe -Command \"Get-Command node | Select-Object -ExpandProperty Source\")",
+      "Bash(git reset:*)",
+      "Bash(node -c functions/api/todo.js)",
+      "Bash(node -c functions/api/todo-suggest.js)",
+      "Bash(node -c functions/api/todo-decompose.js)",
+      "Bash(node -c functions/api/process-input.js)",
+      "Bash(node -c functions/api/dashboard.js)",
+      "Bash(node -c functions/api/chat.js)",
+      "Bash(where node:*)",
+      "Bash(\"/c/Program Files/nodejs/node.exe\" -c \"C:\\\\Users\\\\ocura\\\\Documents\\\\Dev\\\\life-os\\\\functions\\\\api\\\\todo.js\")",
+      "Bash(\"/c/Program Files/nodejs/node.exe\" -c \"C:\\\\Users\\\\ocura\\\\Documents\\\\Dev\\\\life-os\\\\functions\\\\api\\\\todo-decompose.js\")",
+      "Bash(\"/c/Program Files/nodejs/node.exe\" -c \"C:\\\\Users\\\\ocura\\\\Documents\\\\Dev\\\\life-os\\\\functions\\\\api\\\\process-input.js\")",
+      "Bash(\"/c/Program Files/nodejs/node.exe\" -c \"C:\\\\Users\\\\ocura\\\\Documents\\\\Dev\\\\life-os\\\\functions\\\\api\\\\dashboard.js\")",
+      "Bash(cmd.exe /c \"node -c C:\\\\Users\\\\ocura\\\\Documents\\\\Dev\\\\life-os\\\\functions\\\\api\\\\todo.js && node -c C:\\\\Users\\\\ocura\\\\Documents\\\\Dev\\\\life-os\\\\functions\\\\api\\\\todo-decompose.js && node -c C:\\\\Users\\\\ocura\\\\Documents\\\\Dev\\\\life-os\\\\functions\\\\api\\\\process-input.js && node -c C:\\\\Users\\\\ocura\\\\Documents\\\\Dev\\\\life-os\\\\functions\\\\api\\\\dashboard.js && echo All OK\")",
+      "Bash(cmd.exe /c \"node -c C:\\\\Users\\\\ocura\\\\Documents\\\\Dev\\\\life-os\\\\functions\\\\api\\\\todo.js 2>&1 && node -c C:\\\\Users\\\\ocura\\\\Documents\\\\Dev\\\\life-os\\\\functions\\\\api\\\\todo-decompose.js 2>&1 && node -c C:\\\\Users\\\\ocura\\\\Documents\\\\Dev\\\\life-os\\\\functions\\\\api\\\\process-input.js 2>&1 && node -c C:\\\\Users\\\\ocura\\\\Documents\\\\Dev\\\\life-os\\\\functions\\\\api\\\\dashboard.js 2>&1 && node -c C:\\\\Users\\\\ocura\\\\Documents\\\\Dev\\\\life-os\\\\functions\\\\api\\\\chat.js 2>&1 && node -c C:\\\\Users\\\\ocura\\\\Documents\\\\Dev\\\\life-os\\\\functions\\\\api\\\\todo-suggest.js 2>&1 && echo All OK\")",
+      "Bash(cmd.exe /c \"node -e \"\"console.log\\(''OK''\\)\"\"\")"
     ]
   }
 }

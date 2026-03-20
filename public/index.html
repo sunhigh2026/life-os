@@ -24,9 +24,13 @@
     <!-- テキスト入力 -->
     <div class="text-input-row">
       <textarea id="textInput" placeholder="メモを入力…（改行OK）" autocomplete="off" autofocus rows="2"
-        style="resize:vertical;font-family:inherit;font-size:14px;flex:1;border:1px solid var(--border);border-radius:10px;padding:8px 12px;min-height:40px;"></textarea>
+        style="resize:vertical;font-family:inherit;font-size:14px;flex:1;border:1px solid var(--border);border-radius:10px;padding:8px 12px;min-height:40px;"
+        oninput="onTextInput()"></textarea>
       <button class="btn-voice" id="voiceBtn" onclick="toggleVoice()" title="音声入力">🎤</button>
     </div>
+
+    <!-- AI分類ヒント -->
+    <div id="aiClassifyHint" style="display:none;font-size:12px;color:#e91e8a;background:#fff0f5;padding:6px 10px;border-radius:8px;text-align:center;"></div>
 
     <!-- モード切替 -->
     <div class="mode-toggle">
@@ -56,13 +60,18 @@
       </div>
     </div>
 
-    <!-- ToDo: 期限・優先度 -->
+    <!-- ToDo: 期限・優先度・分類 -->
     <div class="todo-options" id="todoOptions" style="display:none;">
       <input type="date" id="dueDate" title="期限日">
       <div class="priority-btns">
         <button class="priority-btn" data-priority="high" onclick="selectPriority('high')">🔴 高</button>
         <button class="priority-btn selected" data-priority="mid" onclick="selectPriority('mid')">🟡 普通</button>
         <button class="priority-btn" data-priority="low" onclick="selectPriority('low')">🔵 低</button>
+      </div>
+      <div class="category-btns" style="display:flex;gap:4px;width:100%;margin-top:2px;">
+        <button class="category-btn" data-category="must" onclick="selectCategory('must')" style="flex:1;padding:6px 10px;border:2px solid var(--border);border-radius:10px;background:var(--bg);cursor:pointer;font-size:12px;transition:all 0.15s;">🔥 Must</button>
+        <button class="category-btn" data-category="want" onclick="selectCategory('want')" style="flex:1;padding:6px 10px;border:2px solid var(--border);border-radius:10px;background:var(--bg);cursor:pointer;font-size:12px;transition:all 0.15s;">💫 Want</button>
+        <button class="category-btn selected" data-category="" onclick="selectCategory('')" style="flex:1;padding:6px 10px;border:2px solid var(--accent);border-radius:10px;background:#eaf3ff;cursor:pointer;font-size:12px;transition:all 0.15s;">なし</button>
       </div>
     </div>
 
@@ -72,6 +81,9 @@
 
   <!-- ダッシュボード -->
   <div class="dashboard" id="dashboard">
+    <!-- 日次概要カード -->
+    <div id="dailySummaryCard" style="display:none;background:linear-gradient(135deg,#fff0f5 0%,#f0f0ff 100%);border-radius:16px;box-shadow:0 1px 4px rgba(0,0,0,0.08);padding:14px 16px;"></div>
+
     <!-- 今日の予定（Googleカレンダー） -->
     <div class="section" id="sectionCalendar" style="display:none;">
       <div class="section-header">📅 今日の予定 <span id="calendarCount" style="color:var(--muted);font-weight:400;font-size:12px;"></span></div>
@@ -170,6 +182,11 @@
       <button class="priority-btn todo-edit-priority selected" data-priority="high" onclick="selectTodoEditPriority('high')">🔴 高</button>
       <button class="priority-btn todo-edit-priority selected" data-priority="mid" onclick="selectTodoEditPriority('mid')">🟡 普通</button>
       <button class="priority-btn todo-edit-priority" data-priority="low" onclick="selectTodoEditPriority('low')">🔵 低</button>
+    </div>
+    <div style="display:flex;gap:6px;">
+      <button class="category-btn todo-edit-category" data-category="must" onclick="selectTodoEditCategory('must')" style="flex:1;padding:6px 10px;border:2px solid var(--border);border-radius:10px;background:var(--bg);cursor:pointer;font-size:12px;">🔥 Must</button>
+      <button class="category-btn todo-edit-category" data-category="want" onclick="selectTodoEditCategory('want')" style="flex:1;padding:6px 10px;border:2px solid var(--border);border-radius:10px;background:var(--bg);cursor:pointer;font-size:12px;">💫 Want</button>
+      <button class="category-btn todo-edit-category selected" data-category="" onclick="selectTodoEditCategory('')" style="flex:1;padding:6px 10px;border:2px solid var(--accent);border-radius:10px;background:#eaf3ff;cursor:pointer;font-size:12px;">なし</button>
     </div>
     <div style="display:flex;gap:8px;">
       <button class="btn-submit todo-mode" onclick="saveTodoEdit()">保存</button>

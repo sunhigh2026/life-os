@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS todos (
   due TEXT,
   status TEXT DEFAULT 'open',
   done_at TEXT,
+  category TEXT DEFAULT NULL,
   created_at TEXT DEFAULT (datetime('now'))
 );
 

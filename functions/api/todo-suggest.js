@@ -70,17 +70,19 @@ export async function onRequestGet({ env }) {
 
   // Gemini に提案を依頼
   const todoList = todos.map(t =>
-    `[${t.id}] 優先度:${t.priority} 期限:${t.due || 'なし'} タグ:${t.tag || 'なし'} 「${t.text}」`
+    `[${t.id}] 優先度:${t.priority} 分類:${t.category || '未分類'} 期限:${t.due || 'なし'} タグ:${t.tag || 'なし'} 「${t.text}」`
   ).join('\n');
 
   const prompt = `あなたはタスク整理アシスタント「ピアちゃん」です。
 今日は${today}。以下の未完了ToDoリストとカレンダー予定を見て、今日やるべきタスクを3〜5件選んでください。
 
 選択基準:
+- 分類が「must」（やらなきゃ）のものを最優先
 - 期限が今日または超過しているもの優先
 - 優先度highを優先
 - カレンダーの予定と関連があるもの
 - 長く放置されているもの
+- 「want」（やりたい）は余裕があれば1件入れる
 
 未完了ToDo:
 ${todoList}${calendarInfo}

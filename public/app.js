@@ -9,9 +9,11 @@ const AUTH_KEY = 'hidapia2026';
 let mode = 'diary'; // 'diary' | 'todo'
 let selectedMood = null;
 let selectedPriority = 'mid';
+let selectedCategory = '';
 let recognition = null;
 let isRecording = false;
 let topTags = [];
+let aiClassifyTimer = null;
 
 const MOODS = { 1: '😢', 2: '😞', 3: '😐', 4: '🙂', 5: '😊', 6: '🤩' };
 
@@ -99,8 +101,21 @@ function selectMood(v) {
 // ==============================
 function selectPriority(p) {
   selectedPriority = p;
-  document.querySelectorAll('.priority-btn').forEach((btn) => {
+  document.querySelectorAll('#todoOptions .priority-btn').forEach((btn) => {
     btn.classList.toggle('selected', btn.dataset.priority === p);
+  });
+}
+
+// ==============================
+// Category (must/want)
+// ==============================
+function selectCategory(c) {
+  selectedCategory = c;
+  document.querySelectorAll('#todoOptions .category-btn').forEach((btn) => {
+    const match = btn.dataset.category === c;
+    btn.classList.toggle('selected', match);
+    btn.style.borderColor = match ? 'var(--accent)' : 'var(--border)';
+    btn.style.background = match ? '#eaf3ff' : 'var(--bg)';
   });
 }
 
@@ -195,6 +210,76 @@ function toggleVoice() {
 }
 
 // ==============================
+// AI分類（テキスト入力時にバックグラウンドで分類）
+// ==============================
+function onTextInput() {
+  clearTimeout(aiClassifyTimer);
+  const text = document.getElementById('textInput').value.trim();
+  if (text.length < 5) return; // 短すぎるテキストは無視
+  aiClassifyTimer = setTimeout(() => classifyInput(text), 800);
+}
+
+async function classifyInput(text) {
+  try {
+    const data = await apiFetch('/api/process-input', {
+      method: 'POST',
+      body: JSON.stringify({ text }),
+    });
+    if (data.confidence < 0.5) return; // 自信がない場合はスキップ
+
+    // AIの提案をヒントとして表示（自動切替はしない）
+    const hint = document.getElementById('aiClassifyHint');
+    if (!hint) return;
+
+    if (data.mode === 'todo' && mode === 'diary') {
+      hint.innerHTML = `<span style="cursor:pointer;" onclick="applyAiClassify('todo')">💡 ToDoかも？ タップで切替</span>`;
+      hint.style.display = '';
+      hint._aiData = data;
+    } else if (data.mode === 'diary' && mode === 'todo') {
+      hint.innerHTML = `<span style="cursor:pointer;" onclick="applyAiClassify('diary')">💡 日記かも？ タップで切替</span>`;
+      hint.style.display = '';
+      hint._aiData = data;
+    } else if (data.mode === 'query') {
+      hint.innerHTML = `<span style="cursor:pointer;" onclick="applyAiClassify('query')">💡 ピアちゃんに聞く？ タップでチャットへ</span>`;
+      hint.style.display = '';
+      hint._aiData = data;
+    } else {
+      hint.style.display = 'none';
+    }
+  } catch (_) {}
+}
+
+function applyAiClassify(targetMode) {
+  const hint = document.getElementById('aiClassifyHint');
+  const data = hint?._aiData;
+  hint.style.display = 'none';
+
+  if (targetMode === 'query') {
+    const text = document.getElementById('textInput').value.trim();
+    localStorage.setItem('chatAutoMsg', text);
+    window.location.href = '/chat.html';
+    return;
+  }
+
+  setMode(targetMode);
+
+  if (data) {
+    // AI提案を適用
+    if (data.suggested_tag && !document.getElementById('tagInput').value) {
+      document.getElementById('tagInput').value = data.suggested_tag;
+    }
+    if (targetMode === 'todo') {
+      if (data.suggested_priority) selectPriority(data.suggested_priority);
+      if (data.suggested_category) selectCategory(data.suggested_category);
+      if (data.suggested_due) document.getElementById('dueDate').value = data.suggested_due;
+    }
+    if (targetMode === 'diary' && data.suggested_mood) {
+      selectMood(data.suggested_mood);
+    }
+  }
+}
+
+// ==============================
 // 記録送信
 // ==============================
 async function submit() {
@@ -217,9 +302,10 @@ async function submit() {
       showToast('📝 記録しました！');
     } else {
       const due = document.getElementById('dueDate').value || null;
+      const category = selectedCategory || null;
       await apiFetch('/api/todo', {
         method: 'POST',
-        body: JSON.stringify({ datetime, text, tag, priority: selectedPriority, due }),
+        body: JSON.stringify({ datetime, text, tag, priority: selectedPriority, due, category }),
       });
       showToast('☑ ToDoを追加しました！');
     }
@@ -230,7 +316,18 @@ async function submit() {
     document.getElementById('dueDate').value = '';
     setNow();
     selectedMood = null;
+    selectedCategory = '';
     document.querySelectorAll('.mood-btn').forEach((b) => b.classList.remove('selected'));
+    // カテゴリリセット
+    document.querySelectorAll('#todoOptions .category-btn').forEach((btn) => {
+      const isNone = btn.dataset.category === '';
+      btn.classList.toggle('selected', isNone);
+      btn.style.borderColor = isNone ? 'var(--accent)' : 'var(--border)';
+      btn.style.background = isNone ? '#eaf3ff' : 'var(--bg)';
+    });
+    // AI分類ヒントを消す
+    const hint = document.getElementById('aiClassifyHint');
+    if (hint) hint.style.display = 'none';
 
     loadDashboard();
     loadTopTags();
@@ -247,6 +344,7 @@ async function submit() {
 async function loadDashboard() {
   try {
     const data = await apiFetch('/api/dashboard');
+    renderDailySummary(data.summary, data.today);
     renderTodayEntries(data.todayEntries);
     renderTodos(data.openTodos);
     renderLookback(data.lookback);
@@ -255,6 +353,58 @@ async function loadDashboard() {
   } catch (e) {
     console.error('Dashboard error:', e);
   }
+}
+
+// ==============================
+// 日次概要カード
+// ==============================
+function renderDailySummary(summary, today) {
+  const card = document.getElementById('dailySummaryCard');
+  if (!card || !summary) return;
+
+  const moodEmoji = summary.todayAvgMood ? MOODS[Math.round(summary.todayAvgMood)] || '' : '';
+  const items = [];
+
+  // タスク状況
+  if (summary.openCount > 0 || summary.todayDoneCount > 0) {
+    let taskText = '';
+    if (summary.todayDoneCount > 0) taskText += `✅ ${summary.todayDoneCount}件完了`;
+    if (summary.openCount > 0) taskText += `${taskText ? ' / ' : ''}📋 残り${summary.openCount}件`;
+    if (summary.mustCount > 0) taskText += ` (🔥Must ${summary.mustCount})`;
+    items.push(taskText);
+  }
+
+  // 期限超過
+  if (summary.overdueCount > 0) {
+    items.push(`<span style="color:#e53e3e;">🚨 期限超過 ${summary.overdueCount}件</span>`);
+  }
+
+  // 気分
+  if (moodEmoji) {
+    items.push(`今日の気分: ${moodEmoji}`);
+  }
+
+  // ストリーク
+  if (summary.streakCount > 0) {
+    items.push(`🔥 ${summary.streakCount}日連続記録中！`);
+  }
+
+  if (items.length === 0) {
+    card.style.display = 'none';
+    return;
+  }
+
+  card.style.display = '';
+  const dateLabel = today ? `${today.slice(5).replace('-', '/')}` : '';
+  card.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+      <span style="font-size:13px;font-weight:600;color:#e91e8a;">🐾 今日のまとめ</span>
+      <span style="font-size:11px;color:var(--muted);">${dateLabel}</span>
+    </div>
+    <div style="font-size:12px;color:var(--text);display:flex;flex-direction:column;gap:3px;">
+      ${items.map(i => `<div>${i}</div>`).join('')}
+    </div>
+  `;
 }
 
 function renderTodayEntries(entries) {
@@ -288,12 +438,15 @@ function renderTodos(todos) {
     const overdue = t.due && t.due < today;
     const priority = t.priority || 'mid';
     const priorityLabel = { high: '高', mid: '普通', low: '低' }[priority];
+    const categoryBadge = t.category === 'must' ? '<span style="font-size:10px;background:#fff0f0;color:#e53e3e;padding:1px 5px;border-radius:8px;margin-right:4px;">🔥Must</span>'
+      : t.category === 'want' ? '<span style="font-size:10px;background:#f0f0ff;color:#6366f1;padding:1px 5px;border-radius:8px;margin-right:4px;">💫Want</span>'
+      : '';
     const td = encodeURIComponent(JSON.stringify(t));
     return `
       <div class="todo-item">
         <div class="todo-check" onclick="completeTodo('${t.id}', this.closest('.todo-item'))"></div>
         <div class="todo-content" onclick="completeTodo('${t.id}', this.closest('.todo-item'))">
-          <div class="todo-text">${escHtml(t.text)}</div>
+          <div class="todo-text">${categoryBadge}${escHtml(t.text)}</div>
           <div class="todo-meta ${overdue ? 'overdue' : ''}">
             ${t.due ? `📅 ${t.due}${overdue ? ' 期限超過！' : ''}` : ''}
             ${t.tag ? ` #${t.tag}` : ''}
@@ -317,6 +470,8 @@ function openTodoEdit(todoJson) {
   document.querySelectorAll('.todo-edit-priority').forEach((btn) => {
     btn.classList.toggle('selected', btn.dataset.priority === (t.priority || 'mid'));
   });
+  // カテゴリ設定
+  selectTodoEditCategory(t.category || '');
   document.getElementById('todoEditModal').style.display = 'flex';
 }
 
@@ -330,11 +485,12 @@ async function saveTodoEdit() {
   const tag = document.getElementById('todoEditTag').value.trim() || null;
   const due = document.getElementById('todoEditDue').value || null;
   const priority = document.querySelector('.todo-edit-priority.selected')?.dataset.priority || 'mid';
+  const category = document.querySelector('.todo-edit-category.selected')?.dataset.category || null;
 
   try {
     await apiFetch('/api/todo', {
       method: 'PUT',
-      body: JSON.stringify({ id, text, tag, due, priority }),
+      body: JSON.stringify({ id, text, tag, due, priority, category }),
     });
     showToast('✅ 更新しました');
     closeTodoEdit();
@@ -347,6 +503,15 @@ async function saveTodoEdit() {
 function selectTodoEditPriority(p) {
   document.querySelectorAll('.todo-edit-priority').forEach((btn) => {
     btn.classList.toggle('selected', btn.dataset.priority === p);
+  });
+}
+
+function selectTodoEditCategory(c) {
+  document.querySelectorAll('.todo-edit-category').forEach((btn) => {
+    const match = btn.dataset.category === c;
+    btn.classList.toggle('selected', match);
+    btn.style.borderColor = match ? 'var(--accent)' : 'var(--border)';
+    btn.style.background = match ? '#eaf3ff' : 'var(--bg)';
   });
 }
 

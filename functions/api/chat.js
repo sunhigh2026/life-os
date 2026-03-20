@@ -62,7 +62,7 @@ export async function onRequestPost({ request, env }) {
     { results: menstrualDates },
   ] = await Promise.all([
     env.DB.prepare(`SELECT datetime, mood, tag, text FROM entries ORDER BY datetime DESC LIMIT 10`).all(),
-    env.DB.prepare(`SELECT text, tag, priority, due FROM todos WHERE status = 'open' ORDER BY created_at DESC LIMIT 10`).all(),
+    env.DB.prepare(`SELECT text, tag, priority, due, category FROM todos WHERE status = 'open' ORDER BY created_at DESC LIMIT 10`).all(),
     env.DB.prepare(`SELECT title, author, rating, status, note FROM books ORDER BY datetime DESC LIMIT 5`).all(),
     env.DB.prepare(`SELECT key, value FROM settings WHERE key IN ('char_system_prompt', 'char_name', 'gcal_access_token', 'gcal_refresh_token', 'gcal_token_expires')`).all(),
     env.DB.prepare(`SELECT date, steps, active_minutes, weight FROM fitness ORDER BY date DESC LIMIT 7`).all(),
@@ -130,7 +130,7 @@ export async function onRequestPost({ request, env }) {
 ${recentEntries.map((e) => `- ${e.datetime} [mood:${e.mood}] [tag:${e.tag}] ${e.text}`).join('\n') || 'なし'}
 
 未完了ToDo:
-${openTodos.map((t) => `- [${t.priority}] ${t.text} (期限:${t.due || 'なし'}) [tag:${t.tag}]`).join('\n') || 'なし'}
+${openTodos.map((t) => `- [${t.priority}]${t.category ? `[${t.category}]` : ''} ${t.text} (期限:${t.due || 'なし'}) [tag:${t.tag}]`).join('\n') || 'なし'}
 
 最近の読書:
 ${recentBooks.map((b) => `- ${b.title}（${b.author}）★${b.rating} [${b.status}] ${b.note || ''}`).join('\n') || 'なし'}

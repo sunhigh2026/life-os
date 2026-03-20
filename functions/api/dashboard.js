@@ -52,6 +52,36 @@ export async function onRequestGet({ env }) {
      ORDER BY date ASC`
   ).all();
 
+  // ---- 日次概要カード用データ ----
+  // 今日完了したToDo数
+  const { cnt: todayDoneCount } = await env.DB.prepare(
+    `SELECT COUNT(*) as cnt FROM todos WHERE status = 'done' AND done_at LIKE ?`
+  ).bind(`${today}%`).first() || { cnt: 0 };
+
+  // 今日の日記エントリの平均mood
+  const { avg_mood: todayAvgMood } = await env.DB.prepare(
+    `SELECT AVG(mood) as avg_mood FROM entries WHERE datetime LIKE ? AND mood IS NOT NULL`
+  ).bind(`${today}%`).first() || { avg_mood: null };
+
+  // 連続記録日数（ストリークカウント）
+  let streakCount = 0;
+  for (let i = 0; i < streakData.length; i++) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const key = d.toISOString().slice(0, 10);
+    if (streakData.find(s => s.date === key)) {
+      streakCount++;
+    } else {
+      break;
+    }
+  }
+
+  // 期限超過タスク数
+  const overdueCount = openTodos.filter(t => t.due && t.due < today).length;
+
+  // mustタスク数
+  const mustCount = openTodos.filter(t => t.category === 'must').length;
+
   return json({
     today,
     todayEntries,
@@ -59,5 +89,13 @@ export async function onRequestGet({ env }) {
     lookback,
     recentDone,
     streakData,
+    summary: {
+      openCount: openTodos.length,
+      todayDoneCount,
+      overdueCount,
+      mustCount,
+      todayAvgMood: todayAvgMood ? Math.round(todayAvgMood * 10) / 10 : null,
+      streakCount,
+    },
   });
 }

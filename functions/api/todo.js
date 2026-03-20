@@ -38,7 +38,7 @@ export async function onRequestGet({ request, env }) {
 // POST /api/todo
 export async function onRequestPost({ request, env }) {
   const body = await request.json();
-  const { datetime, text, tag, priority, due } = body;
+  const { datetime, text, tag, priority, due, category } = body;
 
   if (!datetime || !text) {
     return json({ error: 'datetime and text required' }, 400);
@@ -46,18 +46,18 @@ export async function onRequestPost({ request, env }) {
 
   const id = generateId();
   await env.DB.prepare(
-    `INSERT INTO todos (id, datetime, text, tag, priority, due, status) VALUES (?, ?, ?, ?, ?, ?, 'open')`
+    `INSERT INTO todos (id, datetime, text, tag, priority, due, category, status) VALUES (?, ?, ?, ?, ?, ?, ?, 'open')`
   )
-    .bind(id, datetime, text, tag ?? null, priority ?? 'mid', due ?? null)
+    .bind(id, datetime, text, tag ?? null, priority ?? 'mid', due ?? null, category ?? null)
     .run();
 
-  return json({ id, datetime, text, tag, priority, due, status: 'open' }, 201);
+  return json({ id, datetime, text, tag, priority, due, category, status: 'open' }, 201);
 }
 
 // PUT /api/todo — ステータス更新・期限変更・優先度変更
 export async function onRequestPut({ request, env }) {
   const body = await request.json();
-  const { id, status, due, priority, text, tag } = body;
+  const { id, status, due, priority, text, tag, category } = body;
 
   if (!id) {
     return json({ error: 'id required' }, 400);
@@ -91,6 +91,10 @@ export async function onRequestPut({ request, env }) {
   if (tag !== undefined) {
     updates.push('tag = ?');
     values.push(tag);
+  }
+  if (category !== undefined) {
+    updates.push('category = ?');
+    values.push(category);
   }
 
   if (updates.length === 0) {
