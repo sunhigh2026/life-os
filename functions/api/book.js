@@ -55,35 +55,37 @@ export async function onRequestPost({ request, env }) {
     return json({ id, datetime, book_id, text }, 201);
   }
 
-  const { isbn, title, author, cover_url, medium, rating, status, note } = body;
+  const { isbn, title, author, cover_url, medium, rating, status, note, tag, end_date } = body;
   const id = generateId();
   const datetime = new Date().toISOString();
 
   await env.DB.prepare(
-    `INSERT INTO books (id, datetime, isbn, title, author, cover_url, medium, rating, status, note)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    `INSERT INTO books (id, datetime, isbn, title, author, cover_url, medium, rating, status, note, tag, end_date)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   )
     .bind(id, datetime, isbn ?? null, title ?? null, author ?? null, cover_url ?? null,
-          medium ?? null, rating ?? null, status ?? 'done', note ?? null)
+          medium ?? null, rating ?? null, status ?? 'done', note ?? null, tag ?? null, end_date ?? null)
     .run();
 
-  return json({ id, datetime, isbn, title, author, cover_url, medium, rating, status, note }, 201);
+  return json({ id, datetime, isbn, title, author, cover_url, medium, rating, status, note, tag, end_date }, 201);
 }
 
 // PUT /api/book
 export async function onRequestPut({ request, env }) {
   const body = await request.json();
-  const { id, status, rating, note, medium } = body;
+  const { id, status, rating, note, medium, tag, end_date } = body;
 
   if (!id) return json({ error: 'id required' }, 400);
 
   const updates = [];
   const values = [];
 
-  if (status !== undefined) { updates.push('status = ?'); values.push(status); }
-  if (rating !== undefined) { updates.push('rating = ?'); values.push(rating); }
-  if (note   !== undefined) { updates.push('note = ?');   values.push(note); }
-  if (medium !== undefined) { updates.push('medium = ?'); values.push(medium); }
+  if (status !== undefined)   { updates.push('status = ?');   values.push(status); }
+  if (rating !== undefined)   { updates.push('rating = ?');   values.push(rating); }
+  if (note   !== undefined)   { updates.push('note = ?');     values.push(note); }
+  if (medium !== undefined)   { updates.push('medium = ?');   values.push(medium); }
+  if (tag    !== undefined)   { updates.push('tag = ?');      values.push(tag); }
+  if (end_date !== undefined) { updates.push('end_date = ?'); values.push(end_date); }
 
   if (updates.length === 0) return json({ error: 'no fields to update' }, 400);
 

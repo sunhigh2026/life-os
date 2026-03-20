@@ -61,6 +61,16 @@
       </div>
 
       <div class="form-group">
+        <div class="form-label">読了日</div>
+        <input type="date" id="endDateInput">
+      </div>
+
+      <div class="form-group">
+        <div class="form-label">タグ</div>
+        <input type="text" id="bookTagInput" placeholder="タグ（任意）">
+      </div>
+
+      <div class="form-group">
         <div class="form-label">評価</div>
         <div class="star-input" id="starInput">
           <button class="star-btn" data-star="1" onclick="selectStar(1)">★</button>
@@ -74,8 +84,8 @@
       <div class="form-group">
         <div class="form-label">感想・メモ</div>
         <div style="position:relative;">
-          <input type="text" id="noteInput" placeholder="感想（任意）">
-          <button class="btn-voice" id="noteVoiceBtn" onclick="toggleNoteVoice()" title="音声入力">🎤</button>
+          <textarea id="noteInput" rows="3" placeholder="感想（任意）" style="width:100%;resize:vertical;font-family:inherit;font-size:14px;border:1px solid var(--border);border-radius:10px;padding:8px 12px;"></textarea>
+          <button class="btn-voice" id="noteVoiceBtn" onclick="toggleNoteVoice()" title="音声入力" style="position:absolute;right:8px;top:8px;">🎤</button>
         </div>
       </div>
 
@@ -130,6 +140,16 @@
         <button class="option-btn" data-edit-status="reading" onclick="selectEditStatus('reading')">📖 読書中</button>
         <button class="option-btn" data-edit-status="done"    onclick="selectEditStatus('done')">✅ 読了</button>
       </div>
+    </div>
+
+    <div>
+      <div class="form-label">読了日</div>
+      <input type="date" id="editEndDate" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:10px;font-size:14px;">
+    </div>
+
+    <div>
+      <div class="form-label">タグ</div>
+      <input type="text" id="editBookTag" placeholder="タグ（任意）" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:10px;font-size:14px;">
     </div>
 
     <div>

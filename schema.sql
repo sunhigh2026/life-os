@@ -33,6 +33,8 @@ CREATE TABLE IF NOT EXISTS books (
   rating INTEGER,
   status TEXT DEFAULT 'done',
   note TEXT,
+  tag TEXT,
+  end_date TEXT,
   created_at TEXT DEFAULT (datetime('now'))
 );
 

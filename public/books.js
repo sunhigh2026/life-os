@@ -182,6 +182,8 @@ function selectStar(n) {
 async function registerBook() {
   if (!selectedBook) return;
   const note = document.getElementById('noteInput').value.trim() || null;
+  const tag = document.getElementById('bookTagInput').value.trim() || null;
+  const end_date = document.getElementById('endDateInput').value || null;
 
   try {
     await apiFetch('/api/book', {
@@ -195,6 +197,8 @@ async function registerBook() {
         rating: selectedRating || null,
         status: selectedStatus,
         note,
+        tag,
+        end_date,
       }),
     });
     showToast('📚 登録しました！');
@@ -261,12 +265,14 @@ function renderRecentBooks(books) {
           <div class="book-title">${escHtml(b.title || '（タイトルなし）')}</div>
           <div class="book-author">${escHtml(b.author || '')}</div>
           ${b.rating ? `<div class="stars">${'★'.repeat(b.rating)}${'☆'.repeat(5 - b.rating)}</div>` : ''}
-          <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
+          <div style="display:flex;align-items:center;gap:8px;margin-top:4px;flex-wrap:wrap;">
             <span class="book-status-badge">${statusLabel[b.status] || b.status}</span>
+            ${b.tag ? `<span style="font-size:11px;color:var(--accent);">#${escHtml(b.tag)}</span>` : ''}
+            ${b.end_date ? `<span style="font-size:11px;color:var(--muted);">読了: ${b.end_date}</span>` : ''}
             <button onclick="openBookEdit(decodeURIComponent('${bd}'))"
               style="font-size:11px;padding:2px 8px;border:1px solid var(--border);border-radius:var(--radius-chip);background:#f5f5f5;cursor:pointer;">✏️ 編集</button>
           </div>
-          ${b.note ? `<div style="font-size:12px;color:var(--muted);margin-top:4px;">${escHtml(b.note)}</div>` : ''}
+          ${b.note ? `<div style="font-size:12px;color:var(--muted);margin-top:4px;white-space:pre-line;">${escHtml(b.note)}</div>` : ''}
         </div>
       </div>
     `;
@@ -288,7 +294,9 @@ function openBookEdit(bookJson) {
     : `<div class="book-cover-placeholder">📖</div>`;
 
   document.getElementById('editBookNote').value = b.note || '';
-  selectEditMedium(b.medium || 'book');
+  document.getElementById('editEndDate').value = b.end_date || '';
+  document.getElementById('editBookTag').value = b.tag || '';
+  selectEditMedium(b.medium || 'owned');
   selectEditStatus(b.status || 'done');
   selectEditStar(b.rating || 0);
 
@@ -335,13 +343,15 @@ async function saveBookEdit() {
   const id = document.getElementById('editBookId').value;
   const note = document.getElementById('editBookNote').value.trim() || null;
   const status = document.querySelector('[data-edit-status].selected')?.dataset.editStatus || 'done';
-  const medium = document.querySelector('[data-edit-medium].selected')?.dataset.editMedium || 'book';
+  const medium = document.querySelector('[data-edit-medium].selected')?.dataset.editMedium || 'owned';
   const rating = editRating || null;
+  const tag = document.getElementById('editBookTag').value.trim() || null;
+  const end_date = document.getElementById('editEndDate').value || null;
 
   try {
     await apiFetch('/api/book', {
       method: 'PUT',
-      body: JSON.stringify({ id, status, medium, rating, note }),
+      body: JSON.stringify({ id, status, medium, rating, note, tag, end_date }),
     });
     showToast('✅ 更新しました');
     closeBookEdit();
