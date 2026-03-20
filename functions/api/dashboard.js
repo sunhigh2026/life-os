@@ -7,7 +7,10 @@ function json(data, status = 200) {
 
 // GET /api/dashboard
 export async function onRequestGet({ env }) {
-  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  // JST (UTC+9) で今日の日付を計算
+  const now = new Date();
+  const jst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+  const today = jst.toISOString().slice(0, 10); // YYYY-MM-DD (JST)
 
   // 今日の記録
   const { results: todayEntries } = await env.DB.prepare(

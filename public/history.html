@@ -85,7 +85,8 @@ let allEntries = [];
 
 // 初期化: 今月を表示
 document.addEventListener('DOMContentLoaded', () => {
-  const today = new Date().toISOString().slice(0, 10);
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
   const firstOfMonth = today.slice(0, 7) + '-01';
   document.getElementById('fromDate').value = firstOfMonth;
   document.getElementById('toDate').value = today;
@@ -144,7 +145,7 @@ function renderEntries(entries) {
             <div class="entry-mood">${e.mood ? MOODS[e.mood] : ''}</div>
             <div class="entry-content">
               ${e.tag ? `<div class="entry-tag">#${e.tag}</div>` : ''}
-              <div class="entry-text">${escHtml(e.text || '')}</div>
+              <div class="entry-text">${escHtml(e.text || '').replace(/\n/g, '<br>')}</div>
             </div>
             <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;">
               <button onclick="openEdit(${JSON.stringify(e).replace(/"/g, '&quot;')})"

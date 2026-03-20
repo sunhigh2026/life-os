@@ -269,7 +269,7 @@ function renderTodayEntries(entries) {
       <div class="entry-mood">${e.mood ? MOODS[e.mood] : ''}</div>
       <div class="entry-content">
         ${e.tag ? `<div class="entry-tag">#${e.tag}</div>` : ''}
-        <div class="entry-text">${escHtml(e.text || '')}</div>
+        <div class="entry-text">${escHtml(e.text || '').replace(/\n/g, '<br>')}</div>
       </div>
     </div>
   `).join('');
@@ -378,7 +378,7 @@ function renderLookback(entries) {
       <div class="entry-mood">${e.mood ? MOODS[e.mood] : ''}</div>
       <div class="entry-content">
         ${e.tag ? `<div class="entry-tag">#${e.tag}</div>` : ''}
-        <div class="entry-text">${escHtml(e.text || '')}</div>
+        <div class="entry-text">${escHtml(e.text || '').replace(/\n/g, '<br>')}</div>
       </div>
     </div>
   `).join('');
