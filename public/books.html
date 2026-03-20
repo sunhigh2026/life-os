@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="/style.css">
   <link rel="manifest" href="/manifest.json">
   <link rel="icon" type="image/png" href="/icon-pia.png">
-  <meta name="theme-color" content="#FFFCF0">
+  <meta name="theme-color" content="#F5FBF8">
 </head>
 <body>
 <div class="app-wrapper">
@@ -102,6 +102,13 @@
     <button class="filter-tab"        id="book-tab-want"    onclick="setBookFilter('want')">📌 読みたい</button>
     <button class="filter-tab"        id="book-tab-reading" onclick="setBookFilter('reading')">📖 読書中</button>
     <button class="filter-tab"        id="book-tab-done"    onclick="setBookFilter('done')">✅ 読了</button>
+  </div>
+
+  <!-- ピアちゃんバナー -->
+  <div class="books-pia-section">
+    <img src="/pia-full-3.png" class="books-pia-img" alt="ピアちゃん"
+         onerror="this.src='/pia-normal.png'">
+    <div class="books-pia-msg">読んだ本を記録して、<br>素敵な読書ライフを！📚</div>
   </div>
 
   <!-- 読書一覧 -->

@@ -251,7 +251,18 @@ function renderRecentBooks(books) {
   const el = document.getElementById('recentBooks');
   if (!books.length) {
     const labels = { all: '読書記録', want: '「読みたい」の本', reading: '「読書中」の本', done: '「読了」の本' };
-    el.innerHTML = `<div class="empty-msg" style="padding:32px 0;">まだ${labels[currentBookFilter] || '読書記録'}がありません</div>`;
+    const msgs = {
+      all:     'まだ読書記録がないよ📖\n本を検索して登録しよう！',
+      want:    '「読みたい」リストがまだ空だよ📌\nどんどん追加してね！',
+      reading: '読書中の本がないよ📖\n今読んでいる本を登録しよう！',
+      done:    'まだ読了した本がないよ✨\n本を読んだら記録してね！',
+    };
+    const msg = msgs[currentBookFilter] || msgs.all;
+    el.innerHTML = `
+      <div class="empty-state">
+        <img src="/pia-full-5.png" class="pia-icon-lg" alt="ピアちゃん" onerror="this.src='/pia-normal.png'">
+        <p>${msg.replace(/\n/g, '<br>')}</p>
+      </div>`;
     return;
   }
   const statusLabel = { want: '📌 読みたい', reading: '📖 読書中', done: '✅ 読了' };

@@ -2,25 +2,26 @@
 
 :root {
   /* ===== New Design System ===== */
-  --primary: #E8C050;        /* ウォームゴールド */
-  --primary-light: #FFFCF0;  /* クリームホワイト */
-  --primary-dark: #A87818;   /* ディープゴールド */
-  --primary-on: #3D2800;     /* プライマリ上のテキスト（濃いブラウン） */
-  --text-main: #374151;
-  --text-sub: #9CA3AF;
-  --bg: #FAFAF7;             /* わずかにウォームホワイト */
+  --primary: #7EC8B0;        /* ミントグリーン */
+  --primary-light: #EEF8F5;  /* 薄いミント */
+  --primary-dark: #5BA68A;   /* セカンダリ/ダークミント */
+  --primary-on: #FFFFFF;     /* プライマリ上のテキスト（白） */
+  --text-main: #2D3B36;
+  --text-sub: #7A9490;
+  --bg: #F5FBF8;             /* ミントホワイト */
   --bg-card: #FFFFFF;
   --accent-green: #6EDE9A;
   --accent-red: #FC8A8A;
   --accent-yellow: #FDD260;
-  --border: #F0EDE8;         /* わずかにウォームボーダー */
+  --accent-pink: #E8A0BF;    /* ピアちゃんピンク */
+  --border: #D8EEE8;         /* ミントボーダー */
 
   /* Legacy aliases for backward compat */
-  --accent: #E8C050;
+  --accent: #E8A0BF;
   --todo-color: #FC8A8A;
   --surface: #FFFFFF;
-  --text: #374151;
-  --muted: #9CA3AF;
+  --text: #2D3B36;
+  --muted: #7A9490;
 
   --radius-card: 20px;
   --radius-btn: 14px;
@@ -180,7 +181,7 @@ input[type="datetime-local"] { flex: 1; }
   color: var(--text-main);
   transition: background 0.1s;
 }
-.tag-chip:hover { background: #f5d5ea; }
+.tag-chip:hover { background: var(--primary-light); }
 .tag-chip.selected { background: var(--primary); color: #fff; }
 .tag-dropdown {
   position: absolute;
@@ -724,6 +725,30 @@ input[type="datetime-local"] { flex: 1; }
 }
 
 .stars { color: var(--primary); font-size: 14px; }
+
+/* Books Pia banner */
+.books-pia-section {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  padding: 12px 16px 0;
+}
+.books-pia-img {
+  height: 80px;
+  width: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 8px rgba(0,0,0,0.08));
+  flex-shrink: 0;
+}
+.books-pia-msg {
+  font-size: 13px;
+  color: var(--text-main);
+  background: var(--primary-light);
+  border-radius: 12px 12px 12px 2px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  line-height: 1.7;
+}
 
 /* Register form */
 .register-form {

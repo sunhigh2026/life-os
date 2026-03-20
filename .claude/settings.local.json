@@ -59,7 +59,11 @@
       "Bash(dir C:UsersocuraDocumentsDevlife-osimages)",
       "mcp__Claude_Preview__preview_start",
       "Bash(where wrangler:*)",
-      "Bash(powershell -Command \"Get-Command node -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source\")"
+      "Bash(powershell -Command \"Get-Command node -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source\")",
+      "Bash(for f:*)",
+      "Bash(do sed:*)",
+      "Bash(done)",
+      "Bash(grep -l \"F5FBF8\" *.html)"
     ]
   }
 }
