@@ -49,20 +49,18 @@ async function computeProgress(db, goal) {
   if (goal.unit === '冊') {
     // Count books read in the period
     const row = await db.prepare(
-      `SELECT COUNT(*) as cnt FROM books WHERE status = 'read' AND date_read BETWEEN ? AND ?`
-    ).bind(period.start, period.end).first();
+      `SELECT COUNT(*) as cnt FROM books WHERE status = 'done' AND datetime BETWEEN ? AND ?`
+    ).bind(period.start, period.end + 'T23:59:59').first();
     current = row?.cnt || 0;
   } else if (goal.unit === '歩') {
-    // Average daily steps in the period
     const row = await db.prepare(
-      `SELECT AVG(steps) as avg_steps FROM health WHERE date BETWEEN ? AND ?`
+      `SELECT AVG(steps) as avg_steps FROM fitness WHERE date BETWEEN ? AND ?`
     ).bind(period.start, period.end).first();
     current = Math.round(row?.avg_steps || 0);
   } else if (goal.unit === '回') {
-    // Count entries with matching goal text as tag in the period
     const row = await db.prepare(
-      `SELECT COUNT(*) as cnt FROM diary WHERE tag = ? AND date BETWEEN ? AND ?`
-    ).bind(goal.goal, period.start, period.end).first();
+      `SELECT COUNT(*) as cnt FROM entries WHERE tag = ? AND datetime BETWEEN ? AND ?`
+    ).bind(goal.goal, period.start, period.end + 'T23:59:59').first();
     current = row?.cnt || 0;
   } else {
     return { current: 0, progress: 0 };
