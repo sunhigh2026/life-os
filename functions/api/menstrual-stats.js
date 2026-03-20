@@ -7,11 +7,21 @@ function json(data, status = 200) {
 
 // GET /api/menstrual-stats — 生理周期の自動検出・予測
 export async function onRequestGet({ env }) {
-  // 日記テキストから「生理」を含むエントリを抽出
+  // 日記テキストから生理開始を示す特定キーワードのみ抽出
+  // 「生理始まった」「生理開始」「生理きた」「生理来た」「生理なった」にマッチ
+  // 「GoogleFitに生理管理ある」等の無関係な言及は除外
   const { results } = await env.DB.prepare(
     `SELECT DISTINCT substr(datetime, 1, 10) as date
      FROM entries
-     WHERE text LIKE '%生理%'
+     WHERE (
+       text LIKE '%生理始%'
+       OR text LIKE '%生理開始%'
+       OR text LIKE '%生理きた%'
+       OR text LIKE '%生理来た%'
+       OR text LIKE '%生理なった%'
+       OR text LIKE '%生理だ%'
+       OR text LIKE '%#生理%'
+     )
      ORDER BY date ASC`
   ).all();
 

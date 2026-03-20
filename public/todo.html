@@ -110,7 +110,7 @@
     <span class="tab-icon">☑</span>ToDo
   </a>
   <a href="/history.html" class="tab-item">
-    <span class="tab-icon">🗓</span>履歴
+    <span class="tab-icon">🗓</span>日記
   </a>
   <a href="/books.html" class="tab-item">
     <span class="tab-icon">📚</span>読書
@@ -313,6 +313,9 @@ async function decomposeTodo(id, text) {
     });
 
     decomposedTasks = data.subtasks || [];
+    // デバッグ情報があれば表示（開発用）
+    const debugInfo = data._debug ? `<div style="font-size:10px;color:#999;margin-top:4px;">debug: ${escHtml(data._debug)}${data._raw ? ' | raw: ' + escHtml(data._raw.slice(0,100)) : ''}</div>` : '';
+
     if (decomposedTasks.length) {
       result.innerHTML = decomposedTasks.map((st, i) => `
         <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:#f8f8f8;border-radius:8px;">
@@ -320,10 +323,10 @@ async function decomposeTodo(id, text) {
           <span style="flex:1;font-size:13px;">${escHtml(st.text)}</span>
           ${st.due ? `<span style="font-size:11px;color:var(--muted);">📅${st.due}</span>` : ''}
         </label>
-      `).join('');
+      `).join('') + debugInfo;
       addBtn.style.display = '';
     } else {
-      result.innerHTML = '<div style="text-align:center;color:var(--muted);font-size:13px;">分解できませんでした</div>';
+      result.innerHTML = '<div style="text-align:center;color:var(--muted);font-size:13px;">分解できませんでした</div>' + debugInfo;
     }
 
     if (data.comment) {

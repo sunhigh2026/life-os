@@ -347,7 +347,6 @@ async function loadDashboard() {
     renderDailySummary(data.summary, data.today);
     renderTodayEntries(data.todayEntries);
     renderTodos(data.openTodos);
-    renderLookback(data.lookback);
     renderRecentDone(data.recentDone);
     renderStreak(data.streakData, data.today);
   } catch (e) {
@@ -528,26 +527,6 @@ async function completeTodo(id, el) {
     el.style.opacity = '1';
     showToast(`エラー: ${e.message}`);
   }
-}
-
-function renderLookback(entries) {
-  const section = document.getElementById('sectionLookback');
-  const el = document.getElementById('lookbackList');
-  if (!entries.length) {
-    section.style.display = 'none';
-    return;
-  }
-  section.style.display = '';
-  el.innerHTML = entries.map((e) => `
-    <div class="entry-item">
-      <div class="entry-time">${e.datetime.slice(0, 10)}<br>${e.datetime.slice(11, 16)}</div>
-      <div class="entry-mood">${e.mood ? MOODS[e.mood] : ''}</div>
-      <div class="entry-content">
-        ${e.tag ? `<div class="entry-tag">#${e.tag}</div>` : ''}
-        <div class="entry-text">${escHtml(e.text || '').replace(/\n/g, '<br>')}</div>
-      </div>
-    </div>
-  `).join('');
 }
 
 function renderRecentDone(todos) {

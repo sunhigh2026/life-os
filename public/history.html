@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>履歴 - Life OS</title>
+  <title>日記 - Life OS</title>
   <link rel="stylesheet" href="/style.css">
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#fafafa">
@@ -21,6 +21,14 @@
     </div>
     <div class="row">
       <input type="text" id="keyword" placeholder="キーワードで絞り込み（任意）" style="flex:1;">
+    </div>
+  </div>
+
+  <!-- この日の振り返り -->
+  <div id="lookbackSection" class="dashboard" style="display:none;">
+    <div class="section" id="sectionLookback">
+      <div class="section-header">📅 この日の振り返り</div>
+      <div class="section-body" id="lookbackList"></div>
     </div>
   </div>
 
@@ -62,7 +70,7 @@
     <span class="tab-icon">☑</span>ToDo
   </a>
   <a href="/history.html" class="tab-item active">
-    <span class="tab-icon">🗓</span>履歴
+    <span class="tab-icon">🗓</span>日記
   </a>
   <a href="/books.html" class="tab-item">
     <span class="tab-icon">📚</span>読書
@@ -83,7 +91,7 @@ const MOODS = { 1: '😢', 2: '😞', 3: '😐', 4: '🙂', 5: '😊', 6: '🤩'
 let editMood = null;
 let allEntries = [];
 
-// 初期化: 今月を表示
+// 初期化: 今月を表示 + 振り返りロード
 document.addEventListener('DOMContentLoaded', () => {
   const now = new Date();
   const today = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
@@ -91,6 +99,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('fromDate').value = firstOfMonth;
   document.getElementById('toDate').value = today;
   search();
+  loadLookback();
 });
 
 async function apiFetch(path, options = {}) {
@@ -225,6 +234,45 @@ function showToast(msg) {
   el.classList.add('show');
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => el.classList.remove('show'), 2000);
+}
+
+// 振り返り（この日の過去の記録）
+async function loadLookback() {
+  try {
+    const data = await apiFetch('/api/dashboard');
+    const entries = data.lookback || [];
+    const section = document.getElementById('lookbackSection');
+    const el = document.getElementById('lookbackList');
+
+    if (!entries.length) {
+      section.style.display = 'none';
+      return;
+    }
+
+    section.style.display = '';
+
+    // 年ごとにグループ
+    const byYear = {};
+    entries.forEach(e => {
+      const year = e.datetime.slice(0, 4);
+      if (!byYear[year]) byYear[year] = [];
+      byYear[year].push(e);
+    });
+
+    el.innerHTML = Object.entries(byYear).sort((a, b) => b[0] - a[0]).map(([year, items]) => `
+      <div style="padding:4px 16px 2px;font-size:11px;color:var(--muted);font-weight:600;">${year}年</div>
+      ${items.map(e => `
+        <div class="entry-item">
+          <div class="entry-time">${e.datetime.slice(11, 16)}</div>
+          <div class="entry-mood">${e.mood ? MOODS[e.mood] : ''}</div>
+          <div class="entry-content">
+            ${e.tag ? `<div class="entry-tag">#${e.tag}</div>` : ''}
+            <div class="entry-text">${escHtml(e.text || '').replace(/\n/g, '<br>')}</div>
+          </div>
+        </div>
+      `).join('')}
+    `).join('');
+  } catch (_) {}
 }
 
 function escHtml(str) {

@@ -10,15 +10,19 @@ export async function onRequestPost({ request, env }) {
   const { id, text } = await request.json();
   if (!text) return json({ error: 'text required' }, 400);
 
-  const today = new Date().toISOString().slice(0, 10);
+  const now = new Date();
+  const jst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+  const today = jst.toISOString().slice(0, 10);
 
   // 既存タスク情報を取得（idがあれば）
   let taskInfo = '';
   if (id) {
-    const task = await env.DB.prepare('SELECT * FROM todos WHERE id = ?').bind(id).first();
-    if (task) {
-      taskInfo = `\n元タスク詳細: 優先度:${task.priority} 期限:${task.due || 'なし'} タグ:${task.tag || 'なし'} 分類:${task.category || '未分類'}`;
-    }
+    try {
+      const task = await env.DB.prepare('SELECT * FROM todos WHERE id = ?').bind(id).first();
+      if (task) {
+        taskInfo = `\n元タスク詳細: 優先度:${task.priority} 期限:${task.due || 'なし'} タグ:${task.tag || 'なし'} 分類:${task.category || '未分類'}`;
+      }
+    } catch (_) {}
   }
 
   const prompt = `あなたはタスク分解アシスタント「ピアちゃん」です。
@@ -53,6 +57,10 @@ ${taskInfo}
 以下のJSON形式で返答してください（他の文章は不要）:
 {"subtasks":[{"text":"具体的なアクション名","due":"YYYY-MM-DD or null"}],"comment":"ピアちゃん口調で一言アドバイス（30字以内）"}`;
 
+  if (!env.GEMINI_API_KEY) {
+    return json({ subtasks: [], comment: 'GEMINI_API_KEYが設定されていません', _debug: 'no_key' });
+  }
+
   try {
     const res = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${env.GEMINI_API_KEY}`,
@@ -61,34 +69,81 @@ ${taskInfo}
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.4, maxOutputTokens: 500 },
+          generationConfig: { temperature: 0.4, maxOutputTokens: 800 },
         }),
       }
     );
 
     if (!res.ok) {
-      return json({ error: 'AI API error' }, 502);
+      const errText = await res.text().catch(() => '');
+      return json({
+        subtasks: [
+          { text: `${text}に必要な情報を調べてメモする`, due: null },
+          { text: `${text}の具体的な段取りを書き出す`, due: null },
+        ],
+        comment: 'AIが一時的にエラーだったよ〜',
+        _debug: `api_${res.status}`,
+      });
     }
 
     const data = await res.json();
-    const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      const parsed = JSON.parse(jsonMatch[0]);
+
+    // Gemini 2.5 Flash: textパートを全て結合して取得（thoughtパートを除外）
+    const parts = data.candidates?.[0]?.content?.parts || [];
+    const textParts = parts.filter(p => p.text && !p.thought).map(p => p.text);
+    const responseText = textParts.join('') || parts.map(p => p.text || '').join('');
+
+    if (!responseText) {
       return json({
-        subtasks: parsed.subtasks || [],
-        comment: parsed.comment || '一歩ずつやっていこ〜！',
+        subtasks: [
+          { text: `${text}に必要な情報を調べてメモする`, due: null },
+          { text: `${text}の具体的な段取りを書き出す`, due: null },
+        ],
+        comment: 'AIの返答が空だったよ〜',
+        _debug: 'empty_response',
       });
     }
-  } catch (_) {}
 
-  // フォールバック（AI失敗時は具体化を促すメッセージ）
-  return json({
-    subtasks: [
-      { text: `${text}に必要な情報を調べてメモする`, due: null },
-      { text: `${text}の具体的な段取りを書き出す`, due: null },
-      { text: `${text}の最初の一手を実行する`, due: null },
-    ],
-    comment: 'AIがうまく動かなかったけど、まずはここから！',
-  });
+    // JSON部分を抽出（```json ... ``` のコードブロックも対応）
+    let jsonStr = null;
+    const codeBlockMatch = responseText.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if (codeBlockMatch) {
+      jsonStr = codeBlockMatch[1].trim();
+    } else {
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        jsonStr = jsonMatch[0];
+      }
+    }
+
+    if (jsonStr) {
+      const parsed = JSON.parse(jsonStr);
+      if (parsed.subtasks && parsed.subtasks.length > 0) {
+        return json({
+          subtasks: parsed.subtasks,
+          comment: parsed.comment || '一歩ずつやっていこ〜！',
+        });
+      }
+    }
+
+    // JSONパース失敗 → デバッグ情報付きフォールバック
+    return json({
+      subtasks: [
+        { text: `${text}に必要な情報を調べてメモする`, due: null },
+        { text: `${text}の具体的な段取りを書き出す`, due: null },
+      ],
+      comment: 'AIの返答を解析できなかったよ〜',
+      _debug: 'parse_fail',
+      _raw: responseText.slice(0, 200),
+    });
+  } catch (e) {
+    return json({
+      subtasks: [
+        { text: `${text}に必要な情報を調べてメモする`, due: null },
+        { text: `${text}の具体的な段取りを書き出す`, due: null },
+      ],
+      comment: 'AIがうまく動かなかったけど、まずはここから！',
+      _debug: `catch: ${e.message}`,
+    });
+  }
 }
