@@ -62,7 +62,7 @@ export async function onRequestPost({ request, env }) {
     { results: menstrualDates },
   ] = await Promise.all([
     env.DB.prepare(`SELECT datetime, mood, tag, text FROM entries ORDER BY datetime DESC LIMIT 10`).all(),
-    env.DB.prepare(`SELECT text, tag, priority, due, category FROM todos WHERE status = 'open' ORDER BY created_at DESC LIMIT 10`).all(),
+    env.DB.prepare(`SELECT text, tag, priority, due, category FROM todos WHERE status = 'open' AND parent_id IS NULL ORDER BY created_at DESC LIMIT 10`).all(),
     env.DB.prepare(`SELECT title, author, rating, status, note FROM books ORDER BY datetime DESC LIMIT 5`).all(),
     env.DB.prepare(`SELECT key, value FROM settings WHERE key IN ('char_system_prompt', 'char_name', 'gcal_access_token', 'gcal_refresh_token', 'gcal_token_expires')`).all(),
     env.DB.prepare(`SELECT date, steps, active_minutes, weight FROM fitness ORDER BY date DESC LIMIT 7`).all(),

@@ -427,13 +427,15 @@ function renderTodayEntries(entries) {
 
 function renderTodos(todos) {
   const el = document.getElementById('todoList');
-  document.getElementById('todoCount').textContent = todos.length ? `${todos.length}件` : '';
-  if (!todos.length) {
+  // サブタスクはダッシュボードでは非表示
+  const topLevel = todos.filter(t => !t.parent_id);
+  document.getElementById('todoCount').textContent = topLevel.length ? `${topLevel.length}件` : '';
+  if (!topLevel.length) {
     el.innerHTML = '<div class="empty-msg">やることはありません 🎉</div>';
     return;
   }
   const today = new Date().toISOString().slice(0, 10);
-  el.innerHTML = todos.map((t) => {
+  el.innerHTML = topLevel.map((t) => {
     const overdue = t.due && t.due < today;
     const priority = t.priority || 'mid';
     const priorityLabel = { high: '高', mid: '普通', low: '低' }[priority];

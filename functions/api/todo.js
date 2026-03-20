@@ -38,7 +38,7 @@ export async function onRequestGet({ request, env }) {
 // POST /api/todo
 export async function onRequestPost({ request, env }) {
   const body = await request.json();
-  const { datetime, text, tag, priority, due, category } = body;
+  const { datetime, text, tag, priority, due, category, parent_id } = body;
 
   if (!datetime || !text) {
     return json({ error: 'datetime and text required' }, 400);
@@ -46,12 +46,12 @@ export async function onRequestPost({ request, env }) {
 
   const id = generateId();
   await env.DB.prepare(
-    `INSERT INTO todos (id, datetime, text, tag, priority, due, category, status) VALUES (?, ?, ?, ?, ?, ?, ?, 'open')`
+    `INSERT INTO todos (id, datetime, text, tag, priority, due, category, parent_id, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'open')`
   )
-    .bind(id, datetime, text, tag ?? null, priority ?? 'mid', due ?? null, category ?? null)
+    .bind(id, datetime, text, tag ?? null, priority ?? 'mid', due ?? null, category ?? null, parent_id ?? null)
     .run();
 
-  return json({ id, datetime, text, tag, priority, due, category, status: 'open' }, 201);
+  return json({ id, datetime, text, tag, priority, due, category, parent_id: parent_id ?? null, status: 'open' }, 201);
 }
 
 // PUT /api/todo — ステータス更新・期限変更・優先度変更
@@ -108,6 +108,13 @@ export async function onRequestPut({ request, env }) {
     .bind(...values)
     .run();
 
+  // 親タスクを完了したらサブタスクも全て完了にする
+  if (status === 'done') {
+    await env.DB.prepare(
+      `UPDATE todos SET status = 'done', done_at = ? WHERE parent_id = ? AND status = 'open'`
+    ).bind(new Date().toISOString(), id).run();
+  }
+
   return json({ id, updated: true });
 }
 
@@ -117,6 +124,8 @@ export async function onRequestDelete({ request, env }) {
   const id = url.searchParams.get('id');
   if (!id) return json({ error: 'id required' }, 400);
 
+  // サブタスクも一緒に削除（カスケード）
+  await env.DB.prepare(`DELETE FROM todos WHERE parent_id = ?`).bind(id).run();
   await env.DB.prepare(`DELETE FROM todos WHERE id = ?`).bind(id).run();
   return json({ id, deleted: true });
 }

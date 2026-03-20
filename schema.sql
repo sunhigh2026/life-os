@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS todos (
   status TEXT DEFAULT 'open',
   done_at TEXT,
   category TEXT DEFAULT NULL,
+  parent_id TEXT DEFAULT NULL,
   created_at TEXT DEFAULT (datetime('now'))
 );
 
@@ -87,3 +88,4 @@ CREATE INDEX IF NOT EXISTS idx_todos_due ON todos(due);
 CREATE INDEX IF NOT EXISTS idx_books_datetime ON books(datetime);
 CREATE INDEX IF NOT EXISTS idx_book_notes_book_id ON book_notes(book_id);
 CREATE INDEX IF NOT EXISTS idx_fitness_date ON fitness(date);
+CREATE INDEX IF NOT EXISTS idx_todos_parent_id ON todos(parent_id);

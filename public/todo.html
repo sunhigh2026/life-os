@@ -39,9 +39,16 @@
     .cat-want { background: #f0f0ff; color: #6366f1; }
     .decompose-btn { background: none; border: none; font-size: 14px; cursor: pointer; padding: 2px 4px; opacity: 0.5; }
     .decompose-btn:hover { opacity: 1; }
-    .subtask-list { margin-left: 30px; padding: 4px 0; }
+    .subtask-list { margin-left: 24px; padding: 4px 0; border-left: 2px solid #e8e8e8; }
     .subtask-item { font-size: 12px; color: var(--muted); padding: 2px 0; display: flex; align-items: center; gap: 4px; }
     .subtask-add-btn { font-size: 11px; background: var(--accent); color: #fff; border: none; border-radius: 6px; padding: 2px 8px; cursor: pointer; }
+    .expand-btn { background: none; border: none; font-size: 13px; cursor: pointer; padding: 2px 4px; color: var(--muted); transition: transform 0.2s; }
+    .expand-btn.open { transform: rotate(90deg); }
+    .subtask-wrapper { display: none; }
+    .subtask-wrapper.open { display: block; }
+    .subtask-todo { margin-left: 12px; padding: 6px 8px; border-bottom: 1px solid #f0f0f0; }
+    .subtask-todo:last-child { border-bottom: none; }
+    .subtask-count { font-size: 10px; color: var(--muted); background: #f0f0f0; border-radius: 8px; padding: 1px 6px; margin-left: 4px; }
   </style>
 </head>
 <body>
@@ -129,8 +136,11 @@ const AUTH_KEY = 'hidapia2026';
 let currentView = 'smart';
 let allTodos = [];
 let aiSuggestions = null;
+let aiSuggestCachedAt = 0; // キャッシュ時刻（ms）
+const AI_CACHE_TTL = 5 * 60 * 1000; // 5分キャッシュ
 let decomposedTasks = [];
 let decomposeSourceId = null;
+let expandedParents = new Set(); // 展開中の親タスクID
 
 document.addEventListener('DOMContentLoaded', () => load());
 
@@ -155,9 +165,15 @@ async function load() {
   }
 }
 
-async function loadAiSuggest() {
+async function loadAiSuggest(force = false) {
+  // キャッシュが有効ならスキップ
+  if (!force && aiSuggestions && (Date.now() - aiSuggestCachedAt < AI_CACHE_TTL)) {
+    if (currentView === 'smart') render();
+    return;
+  }
   try {
     aiSuggestions = await apiFetch('/api/todo-suggest');
+    aiSuggestCachedAt = Date.now();
   } catch (_) {
     aiSuggestions = null;
   }
@@ -168,7 +184,7 @@ function setView(v) {
   currentView = v;
   document.querySelectorAll('.filter-tab').forEach(b => b.classList.remove('active'));
   document.getElementById(`tab-${v}`).classList.add('active');
-  if (v === 'smart' && !aiSuggestions) loadAiSuggest();
+  if (v === 'smart') loadAiSuggest(); // キャッシュ有効なら即表示
   render();
 }
 
@@ -176,22 +192,34 @@ function render() {
   const el = document.getElementById('todoList');
   const today = new Date().toISOString().slice(0, 10);
 
+  // サブタスクマップを構築
+  const subtaskMap = {}; // parent_id → [subtasks]
+  allTodos.forEach(t => {
+    if (t.parent_id) {
+      if (!subtaskMap[t.parent_id]) subtaskMap[t.parent_id] = [];
+      subtaskMap[t.parent_id].push(t);
+    }
+  });
+
+  // トップレベルのみ（parent_idがないもの）
+  const topLevel = allTodos.filter(t => !t.parent_id);
+
   if (currentView === 'done') {
-    const done = allTodos.filter(t => t.status === 'done').slice(0, 20);
+    const done = topLevel.filter(t => t.status === 'done').slice(0, 20);
     if (!done.length) { el.innerHTML = '<div class="empty-msg" style="padding:32px 0;">完了したToDoはありません</div>'; return; }
-    el.innerHTML = `<div class="section"><div class="section-body">${done.map(t => renderTodoItem(t, today, true)).join('')}</div></div>`;
+    el.innerHTML = `<div class="section"><div class="section-body">${done.map(t => renderTodoItem(t, today, true, subtaskMap)).join('')}</div></div>`;
     return;
   }
 
   if (currentView === 'all') {
-    const open = allTodos.filter(t => t.status === 'open');
+    const open = topLevel.filter(t => t.status === 'open');
     if (!open.length) { el.innerHTML = '<div class="empty-msg" style="padding:32px 0;">ToDoはありません 🎉</div>'; return; }
-    el.innerHTML = `<div class="section"><div class="section-body">${open.map(t => renderTodoItem(t, today)).join('')}</div></div>`;
+    el.innerHTML = `<div class="section"><div class="section-body">${open.map(t => renderTodoItem(t, today, false, subtaskMap)).join('')}</div></div>`;
     return;
   }
 
   // === AI整理ビュー ===
-  const open = allTodos.filter(t => t.status === 'open');
+  const open = topLevel.filter(t => t.status === 'open');
   if (!open.length) { el.innerHTML = '<div class="empty-msg" style="padding:32px 0;">やることはないよ！のんびりしよ〜🌸</div>'; return; }
 
   // 週の計算
@@ -215,7 +243,7 @@ function render() {
     if (suggested.length) {
       html += `<div class="ai-suggest-card">
         <div class="ai-msg">🐾 ${escHtml(aiSuggestions.message || '今日のおすすめだよ〜！')}</div>
-        ${suggested.map(t => renderTodoItem(t, today)).join('')}
+        ${suggested.map(t => renderTodoItem(t, today, false, subtaskMap)).join('')}
       </div>`;
     } else if (aiSuggestions.message) {
       html += `<div class="ai-suggest-card"><div class="ai-msg">🐾 ${escHtml(aiSuggestions.message)}</div></div>`;
@@ -227,38 +255,38 @@ function render() {
   // 期限超過
   if (overdue.length) {
     html += `<div class="group-header overdue-header">🚨 期限超過 <span class="badge" style="background:#fed7d7;color:#e53e3e;">${overdue.length}</span></div>`;
-    html += overdue.map(t => renderTodoItem(t, today)).join('');
+    html += overdue.map(t => renderTodoItem(t, today, false, subtaskMap)).join('');
   }
 
   // 今週やること
   if (thisWeek.length) {
     html += `<div class="group-header">📅 今週やること <span class="badge">${thisWeek.length}</span></div>`;
-    html += thisWeek.map(t => renderTodoItem(t, today)).join('');
+    html += thisWeek.map(t => renderTodoItem(t, today, false, subtaskMap)).join('');
   }
 
   // 来週以降
   if (later.length) {
     html += `<div class="group-header">📆 来週以降 <span class="badge">${later.length}</span></div>`;
-    html += later.map(t => renderTodoItem(t, today)).join('');
+    html += later.map(t => renderTodoItem(t, today, false, subtaskMap)).join('');
   }
 
   // いつかやる
   if (noDue.length) {
     html += `<div class="group-header">💭 いつかやる <span class="badge">${noDue.length}</span></div>`;
-    html += noDue.map(t => renderTodoItem(t, today)).join('');
+    html += noDue.map(t => renderTodoItem(t, today, false, subtaskMap)).join('');
   }
 
   // 最近の完了
-  const recentDone = allTodos.filter(t => t.status === 'done').slice(0, 5);
+  const recentDone = topLevel.filter(t => t.status === 'done').slice(0, 5);
   if (recentDone.length) {
     html += `<div class="group-header">✅ 最近の完了</div>`;
-    html += recentDone.map(t => renderTodoItem(t, today, true)).join('');
+    html += recentDone.map(t => renderTodoItem(t, today, true, subtaskMap)).join('');
   }
 
   el.innerHTML = html;
 }
 
-function renderTodoItem(t, today, showDone = false) {
+function renderTodoItem(t, today, showDone = false, subtaskMap = {}) {
   const overdue = t.due && t.due < today && t.status !== 'done';
   const priority = t.priority || 'mid';
   const priorityLabel = { high: '高', mid: '普通', low: '低' }[priority];
@@ -268,15 +296,21 @@ function renderTodoItem(t, today, showDone = false) {
     : t.category === 'want' ? '<span class="cat-badge cat-want">💫Want</span>'
     : '';
 
-  return `
+  const subtasks = subtaskMap[t.id] || [];
+  const hasSubtasks = subtasks.length > 0;
+  const isExpanded = expandedParents.has(t.id);
+  const doneSubCount = subtasks.filter(s => s.status === 'done').length;
+
+  let html = `<div class="todo-item-wrapper">
     <div class="todo-item" style="${isDone ? 'opacity:0.6;' : ''}">
+      ${hasSubtasks ? `<button class="expand-btn ${isExpanded ? 'open' : ''}" onclick="event.stopPropagation();toggleSubtasks('${t.id}')">▶</button>` : ''}
       <div class="todo-check ${isDone ? 'checked' : ''}"
         onclick="${isDone ? `reopenTodo('${t.id}')` : `completeTodo('${t.id}', this.closest('.todo-item'))`}"
         title="${isDone ? '復帰' : '完了'}">
         ${isDone ? '✅' : ''}
       </div>
       <div class="todo-content">
-        <div class="todo-text" style="${isDone ? 'text-decoration:line-through;' : ''}">${categoryBadge}${escHtml(t.text)}</div>
+        <div class="todo-text" style="${isDone ? 'text-decoration:line-through;' : ''}">${categoryBadge}${escHtml(t.text)}${hasSubtasks ? `<span class="subtask-count">${doneSubCount}/${subtasks.length}</span>` : ''}</div>
         <div class="todo-meta ${overdue ? 'overdue' : ''}">
           ${t.due ? `📅 ${t.due}${overdue ? ' 期限超過！' : ''}` : ''}
           ${t.tag ? ` #${t.tag}` : ''}
@@ -286,8 +320,32 @@ function renderTodoItem(t, today, showDone = false) {
       ${!isDone ? `<button class="decompose-btn" onclick="event.stopPropagation();decomposeTodo('${t.id}','${escAttr(t.text)}')" title="タスク分解">🧩</button>` : ''}
       ${!isDone ? `<div class="priority-badge ${priority}" style="cursor:pointer;" onclick="openEdit(decodeURIComponent('${td}'))">${priorityLabel} ✏️</div>` : ''}
       <button class="delete-btn" onclick="deleteTodo('${t.id}')" title="削除">🗑</button>
-    </div>
-  `;
+    </div>`;
+
+  // サブタスク表示
+  if (hasSubtasks) {
+    html += `<div class="subtask-wrapper ${isExpanded ? 'open' : ''}" id="subtasks-${t.id}">
+      <div class="subtask-list">
+        ${subtasks.map(st => {
+          const stDone = st.status === 'done';
+          return `<div class="subtask-todo" style="${stDone ? 'opacity:0.5;' : ''}">
+            <div style="display:flex;align-items:center;gap:6px;">
+              <div class="todo-check ${stDone ? 'checked' : ''}" style="width:18px;height:18px;min-width:18px;border-width:1.5px;"
+                onclick="${stDone ? `reopenTodo('${st.id}')` : `completeSubtask('${st.id}','${t.id}')`}">
+                ${stDone ? '✅' : ''}
+              </div>
+              <span style="font-size:12px;${stDone ? 'text-decoration:line-through;color:var(--muted);' : ''}">${escHtml(st.text)}</span>
+              ${st.due ? `<span style="font-size:10px;color:var(--muted);margin-left:auto;">📅${st.due}</span>` : ''}
+              <button class="delete-btn" style="font-size:12px;padding:2px;" onclick="deleteSubtask('${st.id}')" title="削除">🗑</button>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }
+
+  html += `</div>`;
+  return html;
 }
 
 // ==============================
@@ -361,15 +419,54 @@ async function addDecomposedTasks() {
           priority: source?.priority || 'mid',
           due: st.due || null,
           category: source?.category || null,
+          parent_id: decomposeSourceId, // 親タスクに紐付け
         }),
       });
       added++;
     } catch (_) {}
   }
 
+  // 追加後、親を自動展開
+  if (decomposeSourceId) expandedParents.add(decomposeSourceId);
+
   showToast(`✅ ${added}件のサブタスクを追加しました`);
   closeDecompose();
   await load();
+}
+
+// ==============================
+// サブタスク操作
+// ==============================
+function toggleSubtasks(parentId) {
+  if (expandedParents.has(parentId)) {
+    expandedParents.delete(parentId);
+  } else {
+    expandedParents.add(parentId);
+  }
+  // DOM直接操作で高速切替
+  const wrapper = document.getElementById(`subtasks-${parentId}`);
+  const btn = wrapper?.previousElementSibling?.querySelector('.expand-btn');
+  if (wrapper) wrapper.classList.toggle('open');
+  if (btn) btn.classList.toggle('open');
+}
+
+async function completeSubtask(id, parentId) {
+  try {
+    await apiFetch('/api/todo', { method: 'PUT', body: JSON.stringify({ id, status: 'done' }) });
+    showToast('✅ 完了！');
+    // 展開状態を保持して再描画
+    expandedParents.add(parentId);
+    await load();
+  } catch (e) { showToast(`エラー: ${e.message}`); }
+}
+
+async function deleteSubtask(id) {
+  if (!confirm('このサブタスクを削除しますか？')) return;
+  try {
+    await apiFetch(`/api/todo?id=${id}`, { method: 'DELETE' });
+    showToast('🗑 削除しました');
+    await load();
+  } catch (e) { showToast(`エラー: ${e.message}`); }
 }
 
 function closeDecompose() {
@@ -386,6 +483,7 @@ async function completeTodo(id, el) {
   try {
     await apiFetch('/api/todo', { method: 'PUT', body: JSON.stringify({ id, status: 'done' }) });
     showToast('✅ 完了！');
+    aiSuggestCachedAt = 0; // キャッシュ無効化
     await load();
   } catch (e) { el.style.opacity = '1'; showToast(`エラー: ${e.message}`); }
 }

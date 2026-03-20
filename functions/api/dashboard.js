@@ -21,7 +21,7 @@ export async function onRequestGet({ env }) {
 
   // 未完了ToDo
   const { results: openTodos } = await env.DB.prepare(
-    `SELECT * FROM todos WHERE status = 'open' ORDER BY
+    `SELECT * FROM todos WHERE status = 'open' AND parent_id IS NULL ORDER BY
       CASE priority WHEN 'high' THEN 0 WHEN 'mid' THEN 1 ELSE 2 END,
       CASE WHEN due IS NULL THEN 1 ELSE 0 END,
       due ASC, created_at DESC

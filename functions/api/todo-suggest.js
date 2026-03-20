@@ -11,7 +11,7 @@ export async function onRequestGet({ env }) {
 
   // 未完了ToDo取得
   const { results: todos } = await env.DB.prepare(
-    `SELECT id, text, tag, priority, due, created_at FROM todos WHERE status = 'open' ORDER BY created_at DESC`
+    `SELECT id, text, tag, priority, due, created_at FROM todos WHERE status = 'open' AND parent_id IS NULL ORDER BY created_at DESC`
   ).all();
 
   if (!todos.length) {
