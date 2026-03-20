@@ -138,7 +138,15 @@ async function initCharacter() {
   } catch (_) { /* 設定読み込み失敗は無視 */ }
 }
 
-document.addEventListener('DOMContentLoaded', initCharacter);
+document.addEventListener('DOMContentLoaded', () => {
+  initCharacter();
+  // ダッシュボードからの自動メッセージ
+  const autoMsg = localStorage.getItem('chatAutoMsg');
+  if (autoMsg) {
+    localStorage.removeItem('chatAutoMsg');
+    setTimeout(() => sendQuick(autoMsg), 500);
+  }
+});
 
 // ==============================
 // Toast

@@ -104,7 +104,8 @@
 
     <!-- フィットネス -->
     <div class="section" id="sectionFitness" style="display:none;">
-      <div class="section-body" id="fitnessInfo" style="font-size:12px;color:var(--muted);padding:4px 0;display:flex;gap:16px;"></div>
+      <div class="section-header">🏃 フィットネス</div>
+      <div class="section-body" id="fitnessInfo" style="font-size:12px;color:var(--muted);padding:4px 0;"></div>
     </div>
 
     <!-- 生理周期予測 -->
@@ -114,7 +115,10 @@
 
     <!-- 目標 -->
     <div class="section" id="sectionGoals" style="display:none;">
-      <div class="section-header">🎯 目標</div>
+      <div class="section-header" style="display:flex;justify-content:space-between;align-items:center;">
+        🎯 目標
+        <a href="/chat.html" onclick="localStorage.setItem('chatAutoMsg','目標の進捗はどう？達成に向けてアドバイスして')" style="font-size:11px;color:var(--accent);text-decoration:none;">🐾 アドバイス</a>
+      </div>
       <div class="section-body" id="goalList"></div>
     </div>
 
