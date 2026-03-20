@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "life-os",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["wrangler", "pages", "dev", "public", "--compatibility-date=2024-01-01"],
+      "port": 8788
+    }
+  ]
+}

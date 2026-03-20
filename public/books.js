@@ -201,7 +201,8 @@ async function registerBook() {
         end_date,
       }),
     });
-    showToast('📚 登録しました！');
+    const statusMsg = selectedStatus === 'done' ? '読了おつかれさま〜！🎉' : '📚 登録しました！';
+    showPiaToast(statusMsg);
     selectedBook = null;
     document.getElementById('registerArea').style.display = 'none';
     document.getElementById('searchResults').style.display = 'none';
@@ -396,10 +397,18 @@ function toggleNoteVoice() {
 let toastTimer;
 function showToast(msg) {
   const el = document.getElementById('toast');
-  el.textContent = msg;
+  el.innerHTML = msg;
   el.classList.add('show');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.classList.remove('show'), 2000);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+function showPiaToast(msg) {
+  const el = document.getElementById('toast');
+  el.innerHTML = `<img src="/pia-happy.png" onerror="this.remove()">${msg}`;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2500);
 }
 
 function escHtml(str) {

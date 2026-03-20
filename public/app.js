@@ -375,7 +375,7 @@ function renderDailySummary(summary, today) {
 
   // 期限超過
   if (summary.overdueCount > 0) {
-    items.push(`<span style="color:#e53e3e;">🚨 期限超過 ${summary.overdueCount}件</span>`);
+    items.push(`<span style="color:#c53030;">🚨 期限超過 ${summary.overdueCount}件</span>`);
   }
 
   // 気分
@@ -388,29 +388,65 @@ function renderDailySummary(summary, today) {
     items.push(`🔥 ${summary.streakCount}日連続記録中！`);
   }
 
-  if (items.length === 0) {
-    card.style.display = 'none';
-    return;
+  card.style.display = '';
+
+  // 日付（曜日付き）
+  const WEEKDAYS = ['日','月','火','水','木','金','土'];
+  let dateLabel = '';
+  if (today) {
+    const d = new Date(today + 'T00:00:00');
+    const m = d.getMonth() + 1;
+    const day = d.getDate();
+    const wd = WEEKDAYS[d.getDay()];
+    dateLabel = `${m}/${day} (${wd})`;
   }
 
-  card.style.display = '';
-  const dateLabel = today ? `${today.slice(5).replace('-', '/')}` : '';
+  // ピアちゃんコメント
+  let piaMsg = '';
+  const piaImg = getPiaImage('normal');
+  if (!summary.todayEntryCount || summary.todayEntryCount === 0) {
+    piaMsg = 'まだなにも書いてないよ〜✏️';
+  } else if (summary.openCount === 0 && summary.todayDoneCount > 0) {
+    piaMsg = '全部おわったの！すごい〜！🎉';
+  } else if (summary.todayAvgMood && summary.todayAvgMood >= 5) {
+    piaMsg = 'いい日だね〜！☀️';
+  } else if (summary.streakCount >= 3) {
+    piaMsg = `${summary.streakCount}日連続だよ！えらい〜🔥`;
+  } else {
+    piaMsg = 'きょうもがんばってるね〜🐾';
+  }
+
+  card.className = 'daily-summary-card';
   card.innerHTML = `
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-      <span style="font-size:13px;font-weight:600;color:#e91e8a;">🐾 今日のまとめ</span>
-      <span style="font-size:11px;color:var(--muted);">${dateLabel}</span>
+    <div class="pia-comment" style="margin-bottom:0;">
+      <img src="${piaImg}" alt="ピアちゃん" class="pia-icon-sm" onerror="this.src='/icon-pia.png'">
+      <div class="pia-bubble">${piaMsg}</div>
+      <span style="margin-left:auto;font-size:11px;color:var(--text-sub);white-space:nowrap;">${dateLabel}</span>
     </div>
-    <div style="font-size:12px;color:var(--text);display:flex;flex-direction:column;gap:3px;">
+    ${items.length ? `<div style="font-size:13px;color:var(--text-main);display:flex;flex-direction:column;gap:4px;padding-top:2px;">
       ${items.map(i => `<div>${i}</div>`).join('')}
-    </div>
+    </div>` : ''}
   `;
+}
+
+function getPiaImage(type) {
+  const map = {
+    normal: '/pia-normal.png',
+    happy: '/pia-happy.png',
+    thinking: '/pia-thinking.png',
+    cheer: '/pia-cheer.png',
+  };
+  return map[type] || '/pia-normal.png';
 }
 
 function renderTodayEntries(entries) {
   const el = document.getElementById('todayList');
   document.getElementById('todayCount').textContent = entries.length ? `${entries.length}件` : '';
   if (!entries.length) {
-    el.innerHTML = '<div class="empty-msg">今日の記録はまだありません</div>';
+    el.innerHTML = `<div class="empty-state">
+      <img src="/pia-cheer.png" alt="ピアちゃん" class="pia-icon-lg" onerror="this.src='/icon-pia.png'">
+      <p>まだなにも書いてないよ〜<br>なにか書いてみる？</p>
+    </div>`;
     return;
   }
   el.innerHTML = entries.map((e) => `
@@ -431,7 +467,10 @@ function renderTodos(todos) {
   const topLevel = todos.filter(t => !t.parent_id);
   document.getElementById('todoCount').textContent = topLevel.length ? `${topLevel.length}件` : '';
   if (!topLevel.length) {
-    el.innerHTML = '<div class="empty-msg">やることはありません 🎉</div>';
+    el.innerHTML = `<div class="empty-state">
+      <img src="/pia-happy.png" alt="ピアちゃん" class="pia-icon-lg" onerror="this.src='/icon-pia.png'">
+      <p>やることはないよ！<br>のんびりしよ〜🌸</p>
+    </div>`;
     return;
   }
   const today = new Date().toISOString().slice(0, 10);
@@ -439,12 +478,12 @@ function renderTodos(todos) {
     const overdue = t.due && t.due < today;
     const priority = t.priority || 'mid';
     const priorityLabel = { high: '高', mid: '普通', low: '低' }[priority];
-    const categoryBadge = t.category === 'must' ? '<span style="font-size:10px;background:#fff0f0;color:#e53e3e;padding:1px 5px;border-radius:8px;margin-right:4px;">🔥Must</span>'
-      : t.category === 'want' ? '<span style="font-size:10px;background:#f0f0ff;color:#6366f1;padding:1px 5px;border-radius:8px;margin-right:4px;">💫Want</span>'
+    const categoryBadge = t.category === 'must' ? '<span class="cat-badge cat-must">🔥Must</span>'
+      : t.category === 'want' ? '<span class="cat-badge cat-want">💫Want</span>'
       : '';
     const td = encodeURIComponent(JSON.stringify(t));
     return `
-      <div class="todo-item">
+      <div class="todo-item${overdue ? ' overdue-item' : ''}">
         <div class="todo-check" onclick="completeTodo('${t.id}', this.closest('.todo-item'))"></div>
         <div class="todo-content" onclick="completeTodo('${t.id}', this.closest('.todo-item'))">
           <div class="todo-text">${categoryBadge}${escHtml(t.text)}</div>
@@ -453,7 +492,8 @@ function renderTodos(todos) {
             ${t.tag ? ` #${t.tag}` : ''}
           </div>
         </div>
-        <div class="priority-badge ${priority}" style="cursor:pointer;" onclick="openTodoEdit(decodeURIComponent('${td}'))">${priorityLabel} ✏️</div>
+        <div class="priority-badge ${priority}"><span class="priority-dot"></span>${priorityLabel}</div>
+        <button class="edit-btn" onclick="openTodoEdit(decodeURIComponent('${td}'))" title="編集">✏️</button>
       </div>
     `;
   }).join('');
@@ -541,7 +581,7 @@ function renderRecentDone(todos) {
     <div class="done-item">
       <span class="done-check">✅</span>
       <span class="done-text">${escHtml(t.text)}</span>
-      <button class="reopen-btn" onclick="reopenTodo('${t.id}', this.closest('.done-item'))">↩ 復帰</button>
+      <button class="reopen-btn" onclick="reopenTodo('${t.id}', this.closest('.done-item'))" title="復帰">↩</button>
     </div>
   `).join('');
 }
@@ -590,37 +630,56 @@ async function loadFitness() {
 
     section.style.display = '';
 
-    // 今日のデータがあればそれ、なければ直近のデータを表示
     const latest = today || recent[0];
-    const label = today ? '今日' : latest.date.slice(5).replace('-', '/');
+    const isToday = !!today;
+    const dateLabel = isToday ? '' : `<span style="font-size:11px;color:var(--text-sub);">(${latest.date.slice(5).replace('-', '/')} 時点)</span>`;
 
-    const parts = [];
-    if (latest?.steps) parts.push(`🚶 ${latest.steps.toLocaleString()} 歩`);
-    if (latest?.active_minutes) parts.push(`🏃 ${latest.active_minutes} 分`);
-    // 最新の体重（直近7日）
+    const steps = latest?.steps || 0;
+    const activeMin = latest?.active_minutes || 0;
     const latestWeight = recent.find(r => r.weight);
-    if (latestWeight) parts.push(`⚖️ ${latestWeight.weight} kg`);
+    const weight = latestWeight?.weight || null;
 
-    if (parts.length) {
-      const dateTag = today ? '' : `<span style="font-size:11px;color:var(--muted);margin-right:4px;">(${label})</span>`;
-      el.innerHTML = dateTag + parts.join('<span style="color:var(--border);margin:0 4px;">|</span>');
+    // ステップ目標10000で達成率
+    const goalSteps = 10000;
+    const stepPct = Math.min(100, Math.round((steps / goalSteps) * 100));
 
-      // 直近7日の歩数ミニグラフ
-      if (recent.length >= 2) {
-        const barData = recent.slice(0, 7).reverse();
-        const maxSteps = Math.max(...barData.map(r => r.steps || 0), 1);
-        const bars = barData.map(r => {
-          const h = Math.max(2, Math.round(((r.steps || 0) / maxSteps) * 32));
-          const isToday = r.date === (today?.date || '');
-          return `<div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
-            <div style="width:12px;height:${h}px;background:${isToday ? '#4a9eff' : '#cbd5e1'};border-radius:2px;"></div>
-            <span style="font-size:9px;color:var(--muted);">${r.date.slice(8)}</span>
-          </div>`;
-        }).join('');
-        el.innerHTML += `<div style="display:flex;gap:3px;align-items:flex-end;margin-top:8px;">${bars}</div>`;
-      }
-    } else {
-      section.style.display = 'none';
+    // 詳細行
+    const details = [];
+    if (activeMin) details.push(`🏃 活動 ${activeMin}分`);
+    if (weight) details.push(`⚖️ ${weight} kg`);
+
+    // メインレイアウト
+    el.innerHTML = `
+      <div class="fitness-main">
+        <div class="fitness-steps">
+          <span class="fitness-steps-num">${steps ? steps.toLocaleString() : '—'}</span>
+          <span class="fitness-steps-label">歩 ${dateLabel}</span>
+          ${steps ? `<div style="width:100%;height:4px;background:var(--border);border-radius:2px;margin-top:6px;overflow:hidden;">
+            <div style="height:100%;width:${stepPct}%;background:var(--primary);border-radius:2px;"></div>
+          </div>
+          <span style="font-size:9px;color:var(--text-sub);margin-top:2px;">${stepPct}% / 目標1万歩</span>` : ''}
+        </div>
+        <div class="fitness-details">
+          ${details.map(d => `<div class="fitness-detail-row">${d}</div>`).join('')}
+          ${!details.length && !steps ? '<div class="fitness-detail-row" style="color:var(--text-sub);">データなし</div>' : ''}
+        </div>
+      </div>
+    `;
+
+    // 直近7日の歩数バーチャート
+    if (recent.length >= 2) {
+      const barData = recent.slice(0, 7).reverse();
+      const maxSteps = Math.max(...barData.map(r => r.steps || 0), 1);
+      const todayDate = today?.date || '';
+      const bars = barData.map(r => {
+        const pct = Math.max(2, Math.round(((r.steps || 0) / maxSteps) * 48));
+        const isTd = r.date === todayDate;
+        return `<div class="fitness-bar-group">
+          <div class="fitness-bar-fill${isTd ? ' today' : ''}" style="height:${pct}px;"></div>
+          <span class="fitness-bar-date">${r.date.slice(8)}</span>
+        </div>`;
+      }).join('');
+      el.innerHTML += `<div class="fitness-chart">${bars}</div>`;
     }
   } catch (_) {}
 }

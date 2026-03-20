@@ -35,7 +35,31 @@
       "Bash(\"/c/Program Files/nodejs/node.exe\" -c \"C:\\\\Users\\\\ocura\\\\Documents\\\\Dev\\\\life-os\\\\functions\\\\api\\\\dashboard.js\")",
       "Bash(cmd.exe /c \"node -c C:\\\\Users\\\\ocura\\\\Documents\\\\Dev\\\\life-os\\\\functions\\\\api\\\\todo.js && node -c C:\\\\Users\\\\ocura\\\\Documents\\\\Dev\\\\life-os\\\\functions\\\\api\\\\todo-decompose.js && node -c C:\\\\Users\\\\ocura\\\\Documents\\\\Dev\\\\life-os\\\\functions\\\\api\\\\process-input.js && node -c C:\\\\Users\\\\ocura\\\\Documents\\\\Dev\\\\life-os\\\\functions\\\\api\\\\dashboard.js && echo All OK\")",
       "Bash(cmd.exe /c \"node -c C:\\\\Users\\\\ocura\\\\Documents\\\\Dev\\\\life-os\\\\functions\\\\api\\\\todo.js 2>&1 && node -c C:\\\\Users\\\\ocura\\\\Documents\\\\Dev\\\\life-os\\\\functions\\\\api\\\\todo-decompose.js 2>&1 && node -c C:\\\\Users\\\\ocura\\\\Documents\\\\Dev\\\\life-os\\\\functions\\\\api\\\\process-input.js 2>&1 && node -c C:\\\\Users\\\\ocura\\\\Documents\\\\Dev\\\\life-os\\\\functions\\\\api\\\\dashboard.js 2>&1 && node -c C:\\\\Users\\\\ocura\\\\Documents\\\\Dev\\\\life-os\\\\functions\\\\api\\\\chat.js 2>&1 && node -c C:\\\\Users\\\\ocura\\\\Documents\\\\Dev\\\\life-os\\\\functions\\\\api\\\\todo-suggest.js 2>&1 && echo All OK\")",
-      "Bash(cmd.exe /c \"node -e \"\"console.log\\(''OK''\\)\"\"\")"
+      "Bash(cmd.exe /c \"node -e \"\"console.log\\(''OK''\\)\"\"\")",
+      "Bash(cmd /c \"where npx 2>NUL || where node 2>NUL || echo not found\")",
+      "Bash(cmd /c \"C:\\\\Users\\\\ocura\\\\AppData\\\\Roaming\\\\npm\\\\npx.cmd wrangler d1 execute life-os-db --remote --command=\"\"ALTER TABLE todos ADD COLUMN parent_id TEXT DEFAULT NULL;\"\" 2>&1\")",
+      "Bash(powershell -Command \"cd ''C:\\\\Users\\\\ocura\\\\Documents\\\\Dev\\\\life-os''; npx wrangler d1 execute life-os-db --remote --command=''ALTER TABLE todos ADD COLUMN parent_id TEXT DEFAULT NULL;'' 2>&1\")",
+      "Bash(powershell -Command \"ls ''C:\\\\Program Files\\\\nodejs'' 2>&1; ls ''C:\\\\Users\\\\ocura\\\\AppData\\\\Roaming\\\\npm\\\\node_modules\\\\.bin'' 2>&1; ls ''C:\\\\Users\\\\ocura\\\\AppData\\\\Local\\\\fnm'' 2>&1\")",
+      "Bash(powershell -Command \"Get-Command node -ErrorAction SilentlyContinue | Select-Object Source; Get-Command npx -ErrorAction SilentlyContinue | Select-Object Source; [Environment]::GetEnvironmentVariable\\(''Path'',''User''\\)\")",
+      "Bash(powershell -Command \"& ''C:\\\\Users\\\\ocura\\\\AppData\\\\Local\\\\Microsoft\\\\WinGet\\\\Packages\\\\Schniz.fnm_Microsoft.Winget.Source_8wekyb3d8bbwe\\\\fnm.exe'' list 2>&1\")",
+      "Bash(powershell -Command \"$fnmPath = & ''C:\\\\Users\\\\ocura\\\\AppData\\\\Local\\\\Microsoft\\\\WinGet\\\\Packages\\\\Schniz.fnm_Microsoft.Winget.Source_8wekyb3d8bbwe\\\\fnm.exe'' env 2>&1; foreach\\($line in $fnmPath\\){if\\($line -match ''^$env:PATH''\\){Invoke-Expression $line}}; cd ''C:\\\\Users\\\\ocura\\\\Documents\\\\Dev\\\\life-os''; npx wrangler d1 execute life-os-db --remote --command=''ALTER TABLE todos ADD COLUMN parent_id TEXT DEFAULT NULL;'' 2>&1\")",
+      "Bash(powershell -Command \"ls ''C:\\\\Users\\\\ocura\\\\AppData\\\\Local\\\\fnm_multishells'' 2>&1 | Select -First 5\")",
+      "Bash(powershell -Command \"ls ''C:\\\\Users\\\\ocura\\\\AppData\\\\Local\\\\fnm_multishells\\\\32720_1773988381443'' 2>&1\")",
+      "Bash(powershell -Command \"ls ''C:\\\\Users\\\\ocura\\\\AppData\\\\Local\\\\fnm_multishells\\\\10244_1773988412654'' 2>&1\")",
+      "Bash(powershell -Command \"ls ''C:\\\\Program Files\\\\nodejs'' 2>&1; ls ''C:\\\\Users\\\\ocura\\\\AppData\\\\Roaming\\\\fnm'' 2>&1 | Select -First 10\")",
+      "Bash(powershell -Command \"ls ''C:\\\\Users\\\\ocura\\\\AppData\\\\Roaming\\\\fnm\\\\node-versions'' 2>&1\")",
+      "Bash(powershell -Command \"Get-ChildItem -Path ''C:\\\\'' -Recurse -Name ''node.exe'' -ErrorAction SilentlyContinue | Select-Object -First 5\")",
+      "Bash(cmd /c \"C:\\\\Users\\\\ocura\\\\AppData\\\\Local\\\\nvm\\\\v22.22.1\\\\node.exe -v\")",
+      "Bash(powershell -Command \"& ''C:\\\\Users\\\\ocura\\\\AppData\\\\Local\\\\nvm\\\\v22.22.1\\\\node.exe'' -v 2>&1\")",
+      "Bash(powershell -Command \"& ''C:\\\\Users\\\\ocura\\\\AppData\\\\Local\\\\nvm\\\\v22.22.1\\\\npx.cmd'' --version 2>&1\")",
+      "Bash(powershell -Command \"Set-Location ''C:\\\\Users\\\\ocura\\\\Documents\\\\Dev\\\\life-os''; & ''C:\\\\Users\\\\ocura\\\\AppData\\\\Local\\\\nvm\\\\v22.22.1\\\\npx.cmd'' wrangler d1 execute life-os-db --remote --command=''ALTER TABLE todos ADD COLUMN parent_id TEXT DEFAULT NULL;'' 2>&1\")",
+      "Bash(powershell -ExecutionPolicy Bypass -File \"C:\\\\Users\\\\ocura\\\\Documents\\\\Dev\\\\life-os\\\\_migrate.ps1\")",
+      "Bash(powershell -Command \"Remove-Item ''C:\\\\Users\\\\ocura\\\\Documents\\\\Dev\\\\life-os\\\\_migrate.ps1''\")",
+      "WebFetch(domain:note.com)",
+      "Bash(dir C:UsersocuraDocumentsDevlife-osimages)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(where wrangler:*)",
+      "Bash(powershell -Command \"Get-Command node -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source\")"
     ]
   }
 }

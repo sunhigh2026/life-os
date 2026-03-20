@@ -6,25 +6,8 @@
   <title>日記 - Life OS</title>
   <link rel="stylesheet" href="/style.css">
   <link rel="manifest" href="/manifest.json">
-  <meta name="theme-color" content="#fafafa">
-  <style>
-    .lookback-year {
-      padding: 4px 16px 2px;
-      font-size: 12px;
-      color: #e91e8a;
-      font-weight: 600;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .lookback-year::before {
-      content: '';
-      flex: 0 0 3px;
-      height: 3px;
-      border-radius: 50%;
-      background: #e91e8a;
-    }
-  </style>
+  <link rel="icon" type="image/png" href="/icon-pia.png">
+  <meta name="theme-color" content="#FDF2F8">
 </head>
 <body>
 <div class="app-wrapper">
@@ -82,19 +65,19 @@
 <!-- タブバー -->
 <nav class="tab-bar">
   <a href="/" class="tab-item">
-    <span class="tab-icon">🏠</span>Home
+    <span class="tab-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span>Home
   </a>
   <a href="/todo.html" class="tab-item">
-    <span class="tab-icon">☑</span>ToDo
+    <span class="tab-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span>ToDo
   </a>
   <a href="/history.html" class="tab-item active">
-    <span class="tab-icon">🗓</span>日記
+    <span class="tab-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span>日記
   </a>
   <a href="/books.html" class="tab-item">
-    <span class="tab-icon">📚</span>読書
+    <span class="tab-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></span>読書
   </a>
   <a href="/chat.html" class="tab-item">
-    <span class="tab-icon">💬</span>Chat
+    <span class="tab-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>Chat
   </a>
 </nav>
 
