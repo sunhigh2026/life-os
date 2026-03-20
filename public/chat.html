@@ -7,20 +7,21 @@
   <link rel="stylesheet" href="/style.css">
   <link rel="manifest" href="/manifest.json">
   <link rel="icon" type="image/png" href="/icon-pia.png">
-  <meta name="theme-color" content="#FDF2F8">
+  <meta name="theme-color" content="#FFFCF0">
 </head>
 <body>
 <div class="app-wrapper" style="padding-bottom:140px;">
 
-  <!-- ピアちゃんヘッダー -->
+  <!-- ピアちゃんヘッダー（フルボディ表示・耳まで見える） -->
   <div class="chat-char-header" id="chatHeader">
-    <span class="chat-char-icon" id="chatHeaderIcon">
-      <img src="/pia-normal.png" alt="ピアちゃん" onerror="this.parentElement.textContent='🩷'">
-    </span>
-    <div>
+    <img src="/pia-full-1.png" class="chat-pia-full" id="chatPiaImg" alt="ピアちゃん"
+         onerror="this.src='/pia-normal.png'">
+    <div style="padding-bottom:4px;">
       <div class="chat-char-name" id="chatHeaderName">ピアちゃん</div>
-      <div style="font-size:12px;color:var(--text-sub);">AIアシスタント 🐾</div>
+      <div class="chat-char-sub">AIアシスタント 🐾</div>
     </div>
+    <!-- 後方互換用（initCharacter()が参照） -->
+    <span id="chatHeaderIcon" style="display:none;"></span>
   </div>
 
   <!-- クイックボタン -->

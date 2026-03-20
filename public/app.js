@@ -429,14 +429,28 @@ function renderDailySummary(summary, today) {
   `;
 }
 
+// ピアちゃん画像セレクター（複数画像を活用）
+const PIA_IMAGES = {
+  // 顔アップ（コメント・バブル用）
+  normal:   ['/pia-normal.png', '/pia-happy.png'],
+  happy:    ['/pia-happy.png'],
+  thinking: ['/pia-thinking.png'],
+  // フルボディ（空状態・大きめ表示用）
+  cheer:    ['/pia-full-1.png', '/pia-full-2.png', '/pia-full-3.png', '/pia-cheer.png'],
+  full:     ['/pia-full-1.png', '/pia-full-2.png', '/pia-full-3.png',
+             '/pia-full-4.png', '/pia-full-5.png', '/pia-full-6.png', '/pia-full-7.png'],
+};
+
 function getPiaImage(type) {
-  const map = {
-    normal: '/pia-normal.png',
-    happy: '/pia-happy.png',
-    thinking: '/pia-thinking.png',
-    cheer: '/pia-cheer.png',
-  };
-  return map[type] || '/pia-normal.png';
+  const candidates = PIA_IMAGES[type] || PIA_IMAGES.normal;
+  // ページロードごとにランダム、だが再レンダリングで変わらないよう日付シード
+  const seed = (new Date().getDate() + new Date().getHours()) % candidates.length;
+  return candidates[seed];
+}
+
+function getRandomPiaFull() {
+  const imgs = PIA_IMAGES.full;
+  return imgs[Math.floor(Math.random() * imgs.length)];
 }
 
 function renderTodayEntries(entries) {
@@ -444,7 +458,7 @@ function renderTodayEntries(entries) {
   document.getElementById('todayCount').textContent = entries.length ? `${entries.length}件` : '';
   if (!entries.length) {
     el.innerHTML = `<div class="empty-state">
-      <img src="/pia-cheer.png" alt="ピアちゃん" class="pia-icon-lg" onerror="this.src='/icon-pia.png'">
+      <img src="${getPiaImage('cheer')}" alt="ピアちゃん" class="pia-icon-lg" onerror="this.src='/icon-pia.png'">
       <p>まだなにも書いてないよ〜<br>なにか書いてみる？</p>
     </div>`;
     return;
@@ -468,7 +482,7 @@ function renderTodos(todos) {
   document.getElementById('todoCount').textContent = topLevel.length ? `${topLevel.length}件` : '';
   if (!topLevel.length) {
     el.innerHTML = `<div class="empty-state">
-      <img src="/pia-happy.png" alt="ピアちゃん" class="pia-icon-lg" onerror="this.src='/icon-pia.png'">
+      <img src="${getPiaImage('full')}" alt="ピアちゃん" class="pia-icon-lg" onerror="this.src='/icon-pia.png'">
       <p>やることはないよ！<br>のんびりしよ〜🌸</p>
     </div>`;
     return;

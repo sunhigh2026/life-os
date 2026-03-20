@@ -126,9 +126,11 @@ async function initCharacter() {
       if (nameEl) nameEl.textContent = s.char_name;
     }
     if (s.char_icon) {
-      const iconEl = document.getElementById('chatHeaderIcon');
-      if (iconEl) {
-        iconEl.innerHTML = `<img src="/${s.char_icon}" alt="" onerror="this.parentElement.textContent='🩷'">`;
+      // フルボディ表示用imgを更新（耳切れなし）
+      const piaImg = document.getElementById('chatPiaImg');
+      if (piaImg) {
+        piaImg.src = `/${s.char_icon}`;
+        piaImg.onerror = () => { piaImg.src = '/pia-full-1.png'; };
       }
     }
     if (s.char_greeting) {

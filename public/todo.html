@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="/style.css">
   <link rel="manifest" href="/manifest.json">
   <link rel="icon" type="image/png" href="/icon-pia.png">
-  <meta name="theme-color" content="#FDF2F8">
+  <meta name="theme-color" content="#FFFCF0">
   <style>
     .group-header {
       font-size: 13px;
@@ -208,7 +208,7 @@ function render() {
     const open = topLevel.filter(t => t.status === 'open');
     if (!open.length) {
       el.innerHTML = `<div class="empty-state">
-        <img src="/pia-happy.png" alt="ピアちゃん" class="pia-icon-lg" onerror="this.src='/icon-pia.png'">
+        <img src="/pia-full-2.png" alt="ピアちゃん" class="pia-icon-lg" onerror="this.src='/icon-pia.png'">
         <p>ToDoはないよ！<br>のんびりしよ〜🌸</p>
       </div>`;
       return;
@@ -221,7 +221,7 @@ function render() {
   const open = topLevel.filter(t => t.status === 'open');
   if (!open.length) {
     el.innerHTML = `<div class="empty-state">
-      <img src="/pia-happy.png" alt="ピアちゃん" class="pia-icon-lg" onerror="this.src='/icon-pia.png'">
+      <img src="/pia-full-2.png" alt="ピアちゃん" class="pia-icon-lg" onerror="this.src='/icon-pia.png'">
       <p>やることはないよ！<br>のんびりしよ〜🌸</p>
     </div>`;
     return;
