@@ -7,6 +7,24 @@
   <link rel="stylesheet" href="/style.css">
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#fafafa">
+  <style>
+    .lookback-year {
+      padding: 4px 16px 2px;
+      font-size: 12px;
+      color: #e91e8a;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .lookback-year::before {
+      content: '';
+      flex: 0 0 3px;
+      height: 3px;
+      border-radius: 50%;
+      background: #e91e8a;
+    }
+  </style>
 </head>
 <body>
 <div class="app-wrapper">
@@ -24,10 +42,10 @@
     </div>
   </div>
 
-  <!-- この日の振り返り -->
+  <!-- N年前の今日 -->
   <div id="lookbackSection" class="dashboard" style="display:none;">
-    <div class="section" id="sectionLookback">
-      <div class="section-header">📅 この日の振り返り</div>
+    <div class="section" id="sectionLookback" style="background:linear-gradient(135deg,#fff8f0 0%,#fff0f5 100%);">
+      <div class="section-header" id="lookbackHeader">📅 この日の振り返り</div>
       <div class="section-body" id="lookbackList"></div>
     </div>
   </div>
@@ -38,7 +56,7 @@
 </div>
 
 <!-- 編集モーダル -->
-<div id="editModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:400;display:none;align-items:center;justify-content:center;">
+<div id="editModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:400;align-items:center;justify-content:center;">
   <div style="background:#fff;border-radius:16px;padding:20px;width:90%;max-width:480px;display:flex;flex-direction:column;gap:12px;">
     <div style="font-weight:600;font-size:15px;">日記を編集</div>
     <input type="hidden" id="editId">
@@ -236,12 +254,15 @@ function showToast(msg) {
   toastTimer = setTimeout(() => el.classList.remove('show'), 2000);
 }
 
-// 振り返り（この日の過去の記録）
+// ==============================
+// N年前の今日（振り返り）
+// ==============================
 async function loadLookback() {
   try {
     const data = await apiFetch('/api/dashboard');
     const entries = data.lookback || [];
     const section = document.getElementById('lookbackSection');
+    const header = document.getElementById('lookbackHeader');
     const el = document.getElementById('lookbackList');
 
     if (!entries.length) {
@@ -251,27 +272,39 @@ async function loadLookback() {
 
     section.style.display = '';
 
-    // 年ごとにグループ
+    // 今日のMM/DD
+    const now = new Date();
+    const mmdd = `${String(now.getMonth()+1)}/${String(now.getDate())}`;
+    header.textContent = `📅 ${mmdd} の振り返り`;
+
+    // 年ごとにグループ化して「N年前」ラベルを付ける
+    const thisYear = now.getFullYear();
     const byYear = {};
     entries.forEach(e => {
-      const year = e.datetime.slice(0, 4);
+      const year = parseInt(e.datetime.slice(0, 4));
       if (!byYear[year]) byYear[year] = [];
       byYear[year].push(e);
     });
 
-    el.innerHTML = Object.entries(byYear).sort((a, b) => b[0] - a[0]).map(([year, items]) => `
-      <div style="padding:4px 16px 2px;font-size:11px;color:var(--muted);font-weight:600;">${year}年</div>
-      ${items.map(e => `
-        <div class="entry-item">
-          <div class="entry-time">${e.datetime.slice(11, 16)}</div>
-          <div class="entry-mood">${e.mood ? MOODS[e.mood] : ''}</div>
-          <div class="entry-content">
-            ${e.tag ? `<div class="entry-tag">#${e.tag}</div>` : ''}
-            <div class="entry-text">${escHtml(e.text || '').replace(/\n/g, '<br>')}</div>
-          </div>
-        </div>
-      `).join('')}
-    `).join('');
+    el.innerHTML = Object.entries(byYear)
+      .sort((a, b) => parseInt(b[0]) - parseInt(a[0]))
+      .map(([year, items]) => {
+        const yearsAgo = thisYear - parseInt(year);
+        const label = yearsAgo === 1 ? '1年前' : `${yearsAgo}年前`;
+        return `
+          <div class="lookback-year">${label}（${year}年）</div>
+          ${items.map(e => `
+            <div class="entry-item">
+              <div class="entry-time">${e.datetime.slice(11, 16)}</div>
+              <div class="entry-mood">${e.mood ? MOODS[e.mood] : ''}</div>
+              <div class="entry-content">
+                ${e.tag ? `<div class="entry-tag">#${e.tag}</div>` : ''}
+                <div class="entry-text">${escHtml(e.text || '').replace(/\n/g, '<br>')}</div>
+              </div>
+            </div>
+          `).join('')}
+        `;
+      }).join('');
   } catch (_) {}
 }
 
