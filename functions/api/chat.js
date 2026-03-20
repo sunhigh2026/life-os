@@ -33,11 +33,17 @@ export async function onRequestPost({ request, env }) {
     { results: openTodos },
     { results: recentBooks },
     { results: settingsRows },
+    { results: fitnessData },
+    { results: activeGoals },
+    { results: menstrualDates },
   ] = await Promise.all([
     env.DB.prepare(`SELECT datetime, mood, tag, text FROM entries ORDER BY datetime DESC LIMIT 10`).all(),
     env.DB.prepare(`SELECT text, tag, priority, due FROM todos WHERE status = 'open' ORDER BY created_at DESC LIMIT 10`).all(),
     env.DB.prepare(`SELECT title, author, rating, status, note FROM books ORDER BY datetime DESC LIMIT 5`).all(),
     env.DB.prepare(`SELECT key, value FROM settings WHERE key IN ('char_system_prompt', 'char_name', 'gcal_access_token', 'gcal_refresh_token', 'gcal_token_expires')`).all(),
+    env.DB.prepare(`SELECT date, steps, active_minutes, weight FROM fitness ORDER BY date DESC LIMIT 7`).all(),
+    env.DB.prepare(`SELECT goal, target, unit, freq, status FROM goals WHERE status = 'active' LIMIT 5`).all(),
+    env.DB.prepare(`SELECT DISTINCT substr(datetime, 1, 10) as date FROM entries WHERE text LIKE '%生理%' ORDER BY date DESC LIMIT 5`).all(),
   ]);
 
   // settings をマップ化
@@ -103,7 +109,16 @@ ${recentEntries.map((e) => `- ${e.datetime} [mood:${e.mood}] [tag:${e.tag}] ${e.
 ${openTodos.map((t) => `- [${t.priority}] ${t.text} (期限:${t.due || 'なし'}) [tag:${t.tag}]`).join('\n') || 'なし'}
 
 最近の読書:
-${recentBooks.map((b) => `- ${b.title}（${b.author}）★${b.rating} [${b.status}] ${b.note || ''}`).join('\n') || 'なし'}${calendarText}
+${recentBooks.map((b) => `- ${b.title}（${b.author}）★${b.rating} [${b.status}] ${b.note || ''}`).join('\n') || 'なし'}
+
+直近のフィットネス:
+${fitnessData.length ? fitnessData.map(f => `- ${f.date} 歩数:${f.steps || '-'} 運動:${f.active_minutes || '-'}分 体重:${f.weight || '-'}kg`).join('\n') : 'データなし'}
+
+目標:
+${activeGoals.length ? activeGoals.map(g => `- ${g.goal}（目標:${g.target}${g.unit}/${g.freq}）`).join('\n') : '未設定'}
+
+生理記録日（直近5回の開始日付近）:
+${menstrualDates.length ? menstrualDates.map(d => d.date).join(', ') : '記録なし'}${calendarText}
 `.trim();
 
   try {

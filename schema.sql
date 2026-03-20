@@ -66,12 +66,13 @@ CREATE TABLE IF NOT EXISTS settings (
   value TEXT
 );
 
--- フィットネス（歩数・運動時間）
+-- フィットネス（歩数・運動時間・体重）
 CREATE TABLE IF NOT EXISTS fitness (
   id TEXT PRIMARY KEY,
   date TEXT NOT NULL UNIQUE,
   steps INTEGER,
   active_minutes INTEGER,
+  weight REAL,
   created_at TEXT DEFAULT (datetime('now'))
 );
 

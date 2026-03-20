@@ -6,11 +6,13 @@
 //     LIFE_OS_URL  = https://life-os-7pj.pages.dev
 //     AUTH_KEY     = hidapia2026
 //     SHEET_ID     = 1TJ6Q6tHzxz7fN4PxbMD7fWMVIW6eyoxKYiyeXKgz35w
+//     FITNESS_SHEET_NAME = (任意) Health Syncが書き出すシート名
 //
 // 【使い方】
 //   1. スクリプトプロパティを設定（上記）
 //   2. setupTrigger を一度だけ実行 → 毎日AM6:00に自動同期
 //   3. 手動同期はメニュー「🗂 Life OS → 今すぐ同期」またはsyncAll実行
+//   4. フィットネス連携: Health Sync等でスプシにデータ出力 → FITNESS_SHEET_NAMEを設定
 // ============================================================
 
 // シート名の定義
@@ -75,6 +77,14 @@ function syncAll() {
       results.push(`❌ ${SHEET_NAMES[table]}: ${e.message}`);
     }
   });
+
+  // フィットネスデータをスプシ → Life OS にアップロード
+  try {
+    const fitnessResult = syncFitnessToLifeOS(ss, config);
+    results.push(fitnessResult);
+  } catch (e) {
+    results.push(`❌ フィットネス同期: ${e.message}`);
+  }
 
   writeLog(ss, results);
   Logger.log(results.join('\n'));
@@ -197,5 +207,69 @@ function setupTrigger() {
     .create();
 
   Logger.log('トリガー設定完了: 毎日 AM6:00 に Life OS データを自動同期します。');
+}
+
+// ============================================================
+// フィットネス: スプシ → Life OS に同期
+// Health Sync等がスプシに書き出したデータを読み取りPOST
+// ============================================================
+function syncFitnessToLifeOS(ss, config) {
+  const props = PropertiesService.getScriptProperties();
+  const fitnessSheetName = props.getProperty('FITNESS_SHEET_NAME');
+  if (!fitnessSheetName) return '⏭ フィットネス: FITNESS_SHEET_NAME未設定（スキップ）';
+
+  const sheet = ss.getSheetByName(fitnessSheetName);
+  if (!sheet) return `⏭ フィットネス: シート「${fitnessSheetName}」が見つかりません`;
+
+  const data = sheet.getDataRange().getValues();
+  if (data.length < 2) return '⏭ フィットネス: データなし';
+
+  const headers = data[0].map(h => String(h).trim().toLowerCase());
+  const dateIdx = headers.findIndex(h => h === 'date' || h === '日付');
+  const stepsIdx = headers.findIndex(h => h === 'steps' || h === '歩数');
+  const activeIdx = headers.findIndex(h => h.includes('active') || h === '運動時間');
+  const weightIdx = headers.findIndex(h => h === 'weight' || h === '体重');
+
+  if (dateIdx < 0) return '❌ フィットネス: date/日付カラムが見つかりません';
+
+  // 直近30日分だけ同期
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 30);
+  let synced = 0;
+
+  for (let i = 1; i < data.length; i++) {
+    const rawDate = data[i][dateIdx];
+    if (!rawDate) continue;
+
+    let dateStr;
+    if (rawDate instanceof Date) {
+      dateStr = Utilities.formatDate(rawDate, 'Asia/Tokyo', 'yyyy-MM-dd');
+    } else {
+      dateStr = String(rawDate).trim();
+      if (!dateStr.match(/^\d{4}-\d{2}-\d{2}/)) continue;
+      dateStr = dateStr.slice(0, 10);
+    }
+
+    if (new Date(dateStr) < cutoff) continue;
+
+    const payload = { date: dateStr };
+    if (stepsIdx >= 0 && data[i][stepsIdx]) payload.steps = parseInt(data[i][stepsIdx]) || null;
+    if (activeIdx >= 0 && data[i][activeIdx]) payload.active_minutes = parseInt(data[i][activeIdx]) || null;
+    if (weightIdx >= 0 && data[i][weightIdx]) payload.weight = parseFloat(data[i][weightIdx]) || null;
+
+    if (!payload.steps && !payload.active_minutes && !payload.weight) continue;
+
+    try {
+      UrlFetchApp.fetch(`${config.lifeOsUrl}/api/fitness`, {
+        method: 'post',
+        headers: { 'Authorization': `Bearer ${config.authKey}`, 'Content-Type': 'application/json' },
+        payload: JSON.stringify(payload),
+        muteHttpExceptions: true,
+      });
+      synced++;
+    } catch (_) {}
+  }
+
+  return `✅ フィットネス同期: ${synced}件`;
 }
 

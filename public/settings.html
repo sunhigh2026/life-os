@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>設定 - Life OS</title>
+  <link rel="stylesheet" href="/style.css">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#fafafa">
+  <style>
+    .settings-section { background: #fff; border-radius: 14px; padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+    .settings-section h3 { font-size: 14px; margin: 0 0 12px; }
+    .btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+    .btn-action { padding: 8px 16px; border-radius: 10px; border: 1px solid var(--border); background: #f8f8f8; cursor: pointer; font-size: 13px; }
+    .btn-action:hover { background: #eee; }
+    .btn-danger { background: #fff5f5; border-color: #ffcdd2; color: #e53935; }
+    .file-input { display: none; }
+    .import-area { border: 2px dashed var(--border); border-radius: 12px; padding: 16px; text-align: center; color: var(--muted); font-size: 13px; cursor: pointer; }
+    .import-area:hover { border-color: var(--accent); color: var(--accent); }
+    .report-card { background: linear-gradient(135deg, #fff0f5 0%, #f0f0ff 100%); border-radius: 12px; padding: 16px; margin-top: 8px; }
+    .report-card .comment { font-size: 13px; line-height: 1.6; }
+    .stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; margin: 8px 0; }
+    .stat-item { text-align: center; padding: 8px; background: #fff; border-radius: 10px; }
+    .stat-item .num { font-size: 20px; font-weight: 700; }
+    .stat-item .label { font-size: 11px; color: var(--muted); }
+  </style>
+</head>
+<body>
+<div class="app-wrapper">
+
+  <!-- 週次レポート -->
+  <div class="settings-section">
+    <h3>📊 週次レポート</h3>
+    <button class="btn-action" onclick="generateReport('weekly')">今週のレポートを生成</button>
+    <div id="reportArea"></div>
+  </div>
+
+  <!-- データエクスポート -->
+  <div class="settings-section">
+    <h3>📥 データエクスポート</h3>
+    <div class="btn-row">
+      <button class="btn-action" onclick="exportData('entries', 'csv')">📝 日記 CSV</button>
+      <button class="btn-action" onclick="exportData('todos', 'csv')">☑ ToDo CSV</button>
+      <button class="btn-action" onclick="exportData('books', 'csv')">📚 読書 CSV</button>
+      <button class="btn-action" onclick="exportData('entries', 'json')">📝 日記 JSON</button>
+      <button class="btn-action" onclick="exportData('todos', 'json')">☑ ToDo JSON</button>
+      <button class="btn-action" onclick="exportData('books', 'json')">📚 読書 JSON</button>
+    </div>
+  </div>
+
+  <!-- フィットネスCSVインポート -->
+  <div class="settings-section">
+    <h3>🏃 フィットネスデータ取り込み</h3>
+    <p style="font-size:12px;color:var(--muted);margin:0 0 8px;">CSV形式（ヘッダー: date, steps, active_minutes, weight）</p>
+    <div class="import-area" onclick="document.getElementById('fitnessFile').click()">
+      📂 CSVファイルを選択してインポート
+    </div>
+    <input type="file" id="fitnessFile" class="file-input" accept=".csv,.json" onchange="importFitness(this)">
+    <div id="fitnessResult" style="font-size:12px;margin-top:8px;"></div>
+  </div>
+
+  <!-- Audibleインポート -->
+  <div class="settings-section">
+    <h3>🎧 Audibleインポート</h3>
+    <p style="font-size:12px;color:var(--muted);margin:0 0 8px;">Chrome拡張「Audible Library Extractor」のCSVをインポート</p>
+    <div class="import-area" onclick="document.getElementById('audibleFile').click()">
+      📂 Audible CSVを選択してインポート
+    </div>
+    <input type="file" id="audibleFile" class="file-input" accept=".csv" onchange="importAudible(this)">
+    <div id="audibleResult" style="font-size:12px;margin-top:8px;"></div>
+  </div>
+
+  <!-- 目標管理 -->
+  <div class="settings-section">
+    <h3>🎯 目標管理</h3>
+    <div id="goalList"></div>
+    <button class="btn-action" onclick="openGoalForm()" style="margin-top:8px;">+ 新しい目標</button>
+  </div>
+
+  <!-- 目標追加フォーム -->
+  <div id="goalForm" style="display:none;" class="settings-section">
+    <h3>🎯 目標を追加</h3>
+    <input type="text" id="goalText" placeholder="目標（例: 月4冊読む）" style="width:100%;margin-bottom:8px;">
+    <div class="btn-row">
+      <select id="goalType" style="flex:1;padding:8px;border-radius:10px;border:1px solid var(--border);">
+        <option value="habit">習慣</option>
+        <option value="achieve">達成</option>
+        <option value="project">プロジェクト</option>
+      </select>
+      <input type="number" id="goalTarget" placeholder="数値" style="width:60px;padding:8px;border-radius:10px;border:1px solid var(--border);">
+      <input type="text" id="goalUnit" placeholder="単位" style="width:60px;padding:8px;border-radius:10px;border:1px solid var(--border);">
+    </div>
+    <div class="btn-row" style="margin-top:8px;">
+      <select id="goalFreq" style="flex:1;padding:8px;border-radius:10px;border:1px solid var(--border);">
+        <option value="daily">毎日</option>
+        <option value="weekly">毎週</option>
+        <option value="monthly">毎月</option>
+        <option value="yearly">年間</option>
+        <option value="once">1回達成</option>
+      </select>
+      <input type="date" id="goalDeadline" placeholder="期限" style="flex:1;padding:8px;border-radius:10px;border:1px solid var(--border);">
+    </div>
+    <div class="btn-row" style="margin-top:8px;">
+      <button class="btn-submit" onclick="saveGoal()" style="flex:1;">保存</button>
+      <button class="btn-action" onclick="closeGoalForm()">キャンセル</button>
+    </div>
+  </div>
+
+  <!-- Googleカレンダー連携 -->
+  <div class="settings-section">
+    <h3>📅 Googleカレンダー</h3>
+    <div id="calendarStatus" style="font-size:13px;margin-bottom:8px;"></div>
+    <button class="btn-action" id="calendarBtn" onclick="connectCalendar()">連携する</button>
+  </div>
+
+</div>
+
+<!-- タブバー -->
+<nav class="tab-bar">
+  <a href="/" class="tab-item">
+    <span class="tab-icon">🏠</span>Home
+  </a>
+  <a href="/todo.html" class="tab-item">
+    <span class="tab-icon">☑</span>ToDo
+  </a>
+  <a href="/history.html" class="tab-item">
+    <span class="tab-icon">🗓</span>履歴
+  </a>
+  <a href="/books.html" class="tab-item">
+    <span class="tab-icon">📚</span>読書
+  </a>
+  <a href="/chat.html" class="tab-item">
+    <span class="tab-icon">💬</span>Chat
+  </a>
+</nav>
+
+<a href="https://docs.google.com/spreadsheets/d/1TJ6Q6tHzxz7fN4PxbMD7fWMVIW6eyoxKYiyeXKgz35w/edit" class="sheets-fab" target="_blank" rel="noopener" title="Google スプレッドシートで見る">📊</a>
+
+<div id="toast"></div>
+
+<script>
+const AUTH_KEY = 'hidapia2026';
+
+async function apiFetch(path, options = {}) {
+  const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${AUTH_KEY}`, ...(options.headers || {}) };
+  const res = await fetch(path, { ...options, headers });
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `HTTP ${res.status}`);
+  return res.json();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  loadGoals();
+  checkCalendar();
+});
+
+// === エクスポート ===
+async function exportData(table, format) {
+  try {
+    const res = await fetch(`/api/export?table=${table}&format=${format}&limit=10000`, {
+      headers: { 'Authorization': `Bearer ${AUTH_KEY}` },
+    });
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `life-os-${table}.${format}`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast(`📥 ${table} をダウンロードしました`);
+  } catch (e) {
+    showToast(`エラー: ${e.message}`);
+  }
+}
+
+// === フィットネスインポート ===
+async function importFitness(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const el = document.getElementById('fitnessResult');
+  el.textContent = 'インポート中...';
+
+  try {
+    const text = await file.text();
+    const res = await fetch('/api/fitness-import', {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/csv', 'Authorization': `Bearer ${AUTH_KEY}` },
+      body: text,
+    });
+    const data = await res.json();
+    el.textContent = `✅ ${data.imported}件インポート / ${data.skipped}件スキップ`;
+  } catch (e) {
+    el.textContent = `❌ エラー: ${e.message}`;
+  }
+  input.value = '';
+}
+
+// === Audibleインポート ===
+async function importAudible(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const el = document.getElementById('audibleResult');
+  el.textContent = 'インポート中...';
+
+  try {
+    const text = await file.text();
+    const res = await fetch('/api/book-import', {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/csv', 'Authorization': `Bearer ${AUTH_KEY}` },
+      body: text,
+    });
+    const data = await res.json();
+    el.textContent = `✅ ${data.imported}件インポート / ${data.skipped}件スキップ（重複除外）`;
+  } catch (e) {
+    el.textContent = `❌ エラー: ${e.message}`;
+  }
+  input.value = '';
+}
+
+// === 週次レポート ===
+async function generateReport(type) {
+  const el = document.getElementById('reportArea');
+  el.innerHTML = '<div style="padding:12px;color:var(--muted);font-size:13px;">🐾 ピアちゃんがレポートを作成中...</div>';
+  try {
+    const data = await apiFetch(`/api/report?type=${type}`);
+    const s = data.stats || {};
+    el.innerHTML = `
+      <div class="report-card">
+        <div class="stat-grid">
+          <div class="stat-item"><div class="num">${s.entryCount || 0}</div><div class="label">日記</div></div>
+          <div class="stat-item"><div class="num">${s.avgMood ? s.avgMood.toFixed(1) : '-'}</div><div class="label">平均mood</div></div>
+          <div class="stat-item"><div class="num">${s.todoCompleted || 0}</div><div class="label">ToDo完了</div></div>
+          <div class="stat-item"><div class="num">${s.todoRemaining || 0}</div><div class="label">ToDo残</div></div>
+          <div class="stat-item"><div class="num">${s.booksFinished || 0}</div><div class="label">読了</div></div>
+          <div class="stat-item"><div class="num">${s.avgSteps ? Math.round(s.avgSteps).toLocaleString() : '-'}</div><div class="label">平均歩数</div></div>
+        </div>
+        <div class="comment">🐾 ${escHtml(data.comment || '')}</div>
+        ${data.emailSent ? '<div style="font-size:11px;color:var(--muted);margin-top:8px;">✉️ メールも送信しました</div>' : ''}
+      </div>
+    `;
+  } catch (e) {
+    el.innerHTML = `<div style="color:#e53935;font-size:13px;padding:8px;">エラー: ${e.message}</div>`;
+  }
+}
+
+// === 目標管理 ===
+async function loadGoals() {
+  try {
+    const data = await apiFetch('/api/goal?status=active');
+    const el = document.getElementById('goalList');
+    const goals = data.goals || [];
+    if (!goals.length) {
+      el.innerHTML = '<div style="color:var(--muted);font-size:13px;">目標はまだ設定されていません</div>';
+      return;
+    }
+    el.innerHTML = goals.map(g => {
+      const pct = g.progress != null ? Math.min(100, Math.round(g.progress)) : null;
+      return `
+        <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);">
+          <div style="flex:1;">
+            <div style="font-size:13px;font-weight:500;">${escHtml(g.goal)}</div>
+            <div style="font-size:11px;color:var(--muted);">
+              ${g.target ? `目標: ${g.target}${g.unit || ''}/${g.freq || ''}` : ''}
+              ${g.current != null ? ` / 現在: ${g.current}` : ''}
+              ${g.deadline ? ` / 期限: ${g.deadline}` : ''}
+            </div>
+            ${pct != null ? `<div style="background:#eee;border-radius:4px;height:6px;margin-top:4px;overflow:hidden;">
+              <div style="background:${pct >= 100 ? '#48bb78' : '#4a9eff'};height:100%;width:${pct}%;border-radius:4px;"></div>
+            </div>` : ''}
+          </div>
+          <button class="btn-action" style="padding:4px 8px;font-size:11px;" onclick="deleteGoal('${g.id}')">🗑</button>
+        </div>
+      `;
+    }).join('');
+  } catch (_) {}
+}
+
+function openGoalForm() { document.getElementById('goalForm').style.display = ''; }
+function closeGoalForm() { document.getElementById('goalForm').style.display = 'none'; }
+
+async function saveGoal() {
+  const goal = document.getElementById('goalText').value.trim();
+  if (!goal) { showToast('目標を入力してください'); return; }
+
+  try {
+    await apiFetch('/api/goal', {
+      method: 'POST',
+      body: JSON.stringify({
+        goal,
+        type: document.getElementById('goalType').value,
+        target: parseFloat(document.getElementById('goalTarget').value) || null,
+        unit: document.getElementById('goalUnit').value.trim() || null,
+        freq: document.getElementById('goalFreq').value,
+        deadline: document.getElementById('goalDeadline').value || null,
+      }),
+    });
+    showToast('🎯 目標を追加しました');
+    closeGoalForm();
+    document.getElementById('goalText').value = '';
+    loadGoals();
+  } catch (e) { showToast(`エラー: ${e.message}`); }
+}
+
+async function deleteGoal(id) {
+  if (!confirm('この目標を削除しますか？')) return;
+  try {
+    await apiFetch(`/api/goal?id=${id}`, { method: 'DELETE' });
+    showToast('🗑 削除しました');
+    loadGoals();
+  } catch (e) { showToast(`エラー: ${e.message}`); }
+}
+
+// === カレンダー連携 ===
+async function checkCalendar() {
+  try {
+    const data = await apiFetch('/api/calendar?action=status');
+    const el = document.getElementById('calendarStatus');
+    const btn = document.getElementById('calendarBtn');
+    if (data.connected) {
+      el.textContent = '✅ 連携済み';
+      btn.textContent = '再連携';
+    } else {
+      el.textContent = '未連携';
+    }
+  } catch (_) {}
+}
+
+async function connectCalendar() {
+  try {
+    const data = await apiFetch('/api/calendar?action=auth');
+    if (data.url) window.location.href = data.url;
+  } catch (e) { showToast(`エラー: ${e.message}`); }
+}
+
+// === Toast ===
+let toastTimer;
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2000);
+}
+
+function escHtml(str) {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+</script>
+</body>
+</html>

@@ -25,6 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
   loadCalendar();
   loadMenstrualStats();
   loadFitness();
+  loadGoals();
 });
 
 // ==============================
@@ -434,16 +435,51 @@ function renderStreak(data, today) {
 // ==============================
 async function loadFitness() {
   try {
-    const data = await apiFetch('/api/fitness?days=1');
+    const data = await apiFetch('/api/fitness?days=7');
     const section = document.getElementById('sectionFitness');
     const el = document.getElementById('fitnessInfo');
-    if (data.today) {
+    const today = data.today;
+    const recent = data.fitness || [];
+    if (today || recent.length) {
       section.style.display = '';
       const parts = [];
-      if (data.today.steps) parts.push(`🚶 ${data.today.steps.toLocaleString()} 歩`);
-      if (data.today.active_minutes) parts.push(`🏃 ${data.today.active_minutes} 分`);
-      el.innerHTML = parts.join('<span style="color:var(--border);">|</span>');
+      if (today?.steps) parts.push(`🚶 ${today.steps.toLocaleString()} 歩`);
+      if (today?.active_minutes) parts.push(`🏃 ${today.active_minutes} 分`);
+      // 最新の体重（今日になくても直近7日で表示）
+      const latestWeight = recent.find(r => r.weight);
+      if (latestWeight) parts.push(`⚖️ ${latestWeight.weight} kg`);
+      if (parts.length) el.innerHTML = parts.join('<span style="color:var(--border);margin:0 4px;">|</span>');
+      else section.style.display = 'none';
     }
+  } catch (_) {}
+}
+
+// ==============================
+// 目標
+// ==============================
+async function loadGoals() {
+  try {
+    const data = await apiFetch('/api/goal?status=active');
+    const section = document.getElementById('sectionGoals');
+    const el = document.getElementById('goalList');
+    const goals = data.goals || [];
+    if (!goals.length) return;
+
+    section.style.display = '';
+    el.innerHTML = goals.map(g => {
+      const pct = g.progress != null ? Math.min(100, Math.round(g.progress)) : null;
+      return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;">
+        <div style="flex:1;">
+          <div style="font-size:13px;">${escHtml(g.goal)}</div>
+          ${pct != null ? `<div style="display:flex;align-items:center;gap:6px;">
+            <div style="background:#eee;border-radius:4px;height:6px;flex:1;overflow:hidden;">
+              <div style="background:${pct >= 100 ? '#48bb78' : '#4a9eff'};height:100%;width:${pct}%;border-radius:4px;"></div>
+            </div>
+            <span style="font-size:11px;color:var(--muted);white-space:nowrap;">${g.current || 0}/${g.target}${g.unit || ''}</span>
+          </div>` : ''}
+        </div>
+      </div>`;
+    }).join('');
   } catch (_) {}
 }
 

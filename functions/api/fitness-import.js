@@ -46,6 +46,7 @@ export async function onRequestPost({ request, env }) {
     const date = row.date || row.Date || row['日付'];
     const steps = parseInt(row.steps || row.Steps || row['歩数'] || '0', 10) || null;
     const active = parseInt(row.active_minutes || row.ActiveMinutes || row['運動時間'] || '0', 10) || null;
+    const weight = parseFloat(row.weight || row.Weight || row['体重'] || '0') || null;
 
     if (!date || !date.match(/^\d{4}-\d{2}-\d{2}$/)) {
       skipped++;
@@ -55,12 +56,13 @@ export async function onRequestPost({ request, env }) {
     const id = crypto.randomUUID();
     try {
       await env.DB.prepare(
-        `INSERT INTO fitness (id, date, steps, active_minutes)
-         VALUES (?, ?, ?, ?)
+        `INSERT INTO fitness (id, date, steps, active_minutes, weight)
+         VALUES (?, ?, ?, ?, ?)
          ON CONFLICT(date) DO UPDATE SET
            steps = COALESCE(excluded.steps, fitness.steps),
-           active_minutes = COALESCE(excluded.active_minutes, fitness.active_minutes)`
-      ).bind(id, date, steps, active).run();
+           active_minutes = COALESCE(excluded.active_minutes, fitness.active_minutes),
+           weight = COALESCE(excluded.weight, fitness.weight)`
+      ).bind(id, date, steps, active, weight).run();
       imported++;
     } catch {
       skipped++;
