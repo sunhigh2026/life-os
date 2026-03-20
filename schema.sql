@@ -58,6 +58,7 @@ CREATE TABLE IF NOT EXISTS goals (
   freq TEXT,
   start TEXT,
   deadline TEXT,
+  memo TEXT,
   status TEXT DEFAULT 'active',
   created_at TEXT DEFAULT (datetime('now'))
 );

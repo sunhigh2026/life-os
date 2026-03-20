@@ -80,18 +80,20 @@
   <!-- 目標追加フォーム -->
   <div id="goalForm" style="display:none;" class="settings-section">
     <h3>🎯 目標を追加</h3>
-    <input type="text" id="goalText" placeholder="目標（例: 月4冊読む）" style="width:100%;margin-bottom:8px;">
+    <input type="text" id="goalText" placeholder="目標（例: 月4冊読む、試験合格）" style="width:100%;margin-bottom:8px;">
+    <textarea id="goalMemo" placeholder="メモ（やること、進め方など）" rows="2" style="width:100%;margin-bottom:8px;padding:8px;border-radius:10px;border:1px solid var(--border);font-size:13px;resize:vertical;"></textarea>
     <div class="btn-row">
       <select id="goalType" style="flex:1;padding:8px;border-radius:10px;border:1px solid var(--border);">
-        <option value="habit">習慣</option>
-        <option value="achieve">達成</option>
+        <option value="habit">習慣（定量）</option>
+        <option value="achieve">達成（定性）</option>
         <option value="project">プロジェクト</option>
       </select>
-      <input type="number" id="goalTarget" placeholder="数値" style="width:60px;padding:8px;border-radius:10px;border:1px solid var(--border);">
+      <input type="number" id="goalTarget" placeholder="数値(任意)" style="width:70px;padding:8px;border-radius:10px;border:1px solid var(--border);">
       <input type="text" id="goalUnit" placeholder="単位" style="width:60px;padding:8px;border-radius:10px;border:1px solid var(--border);">
     </div>
     <div class="btn-row" style="margin-top:8px;">
       <select id="goalFreq" style="flex:1;padding:8px;border-radius:10px;border:1px solid var(--border);">
+        <option value="none">頻度なし</option>
         <option value="daily">毎日</option>
         <option value="weekly">毎週</option>
         <option value="monthly">毎月</option>
@@ -253,21 +255,29 @@ async function loadGoals() {
       return;
     }
     el.innerHTML = goals.map(g => {
-      const pct = g.progress != null ? Math.min(100, Math.round(g.progress)) : null;
+      const pct = (g.progress != null && g.target) ? Math.min(100, Math.round(g.progress)) : null;
+      const hasQuantity = g.target && g.unit;
+      const deadlineStr = g.deadline ? `期限: ${g.deadline}` : '';
+      const daysLeft = g.deadline ? Math.ceil((new Date(g.deadline) - new Date()) / 86400000) : null;
+      const urgentTag = (daysLeft != null && daysLeft <= 7 && daysLeft >= 0) ? `<span style="color:#e53935;font-size:11px;"> ⚠️ あと${daysLeft}日</span>` : '';
       return `
         <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);">
           <div style="flex:1;">
-            <div style="font-size:13px;font-weight:500;">${escHtml(g.goal)}</div>
+            <div style="font-size:13px;font-weight:500;">${escHtml(g.goal)}${urgentTag}</div>
             <div style="font-size:11px;color:var(--muted);">
-              ${g.target ? `目標: ${g.target}${g.unit || ''}/${g.freq || ''}` : ''}
-              ${g.current != null ? ` / 現在: ${g.current}` : ''}
-              ${g.deadline ? ` / 期限: ${g.deadline}` : ''}
+              ${hasQuantity ? `目標: ${g.target}${g.unit}${g.freq && g.freq !== 'none' ? '/' + g.freq : ''}` : ''}
+              ${hasQuantity && g.current != null ? ` / 現在: ${g.current}` : ''}
+              ${deadlineStr ? (hasQuantity ? ' / ' : '') + deadlineStr : ''}
             </div>
+            ${g.memo ? `<div style="font-size:11px;color:var(--muted);margin-top:2px;white-space:pre-line;">${escHtml(g.memo)}</div>` : ''}
             ${pct != null ? `<div style="background:#eee;border-radius:4px;height:6px;margin-top:4px;overflow:hidden;">
               <div style="background:${pct >= 100 ? '#48bb78' : '#4a9eff'};height:100%;width:${pct}%;border-radius:4px;"></div>
             </div>` : ''}
           </div>
-          <button class="btn-action" style="padding:4px 8px;font-size:11px;" onclick="deleteGoal('${g.id}')">🗑</button>
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <button class="btn-action" style="padding:4px 8px;font-size:11px;" onclick="completeGoal('${g.id}')">✅</button>
+            <button class="btn-action" style="padding:4px 8px;font-size:11px;" onclick="deleteGoal('${g.id}')">🗑</button>
+          </div>
         </div>
       `;
     }).join('');
@@ -281,6 +291,7 @@ async function saveGoal() {
   const goal = document.getElementById('goalText').value.trim();
   if (!goal) { showToast('目標を入力してください'); return; }
 
+  const freq = document.getElementById('goalFreq').value;
   try {
     await apiFetch('/api/goal', {
       method: 'POST',
@@ -289,13 +300,29 @@ async function saveGoal() {
         type: document.getElementById('goalType').value,
         target: parseFloat(document.getElementById('goalTarget').value) || null,
         unit: document.getElementById('goalUnit').value.trim() || null,
-        freq: document.getElementById('goalFreq').value,
+        freq: freq === 'none' ? null : freq,
         deadline: document.getElementById('goalDeadline').value || null,
+        memo: document.getElementById('goalMemo').value.trim() || null,
       }),
     });
     showToast('🎯 目標を追加しました');
     closeGoalForm();
     document.getElementById('goalText').value = '';
+    document.getElementById('goalMemo').value = '';
+    document.getElementById('goalTarget').value = '';
+    document.getElementById('goalUnit').value = '';
+    loadGoals();
+  } catch (e) { showToast(`エラー: ${e.message}`); }
+}
+
+async function completeGoal(id) {
+  if (!confirm('この目標を達成済みにしますか？')) return;
+  try {
+    await apiFetch('/api/goal', {
+      method: 'PUT',
+      body: JSON.stringify({ id, status: 'done' }),
+    });
+    showToast('🎉 達成おめでとう！');
     loadGoals();
   } catch (e) { showToast(`エラー: ${e.message}`); }
 }

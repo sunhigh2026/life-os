@@ -492,16 +492,20 @@ async function loadGoals() {
 
     section.style.display = '';
     el.innerHTML = goals.map(g => {
-      const pct = g.progress != null ? Math.min(100, Math.round(g.progress)) : null;
+      const hasQuantity = g.target && g.unit;
+      const pct = (hasQuantity && g.progress != null) ? Math.min(100, Math.round(g.progress)) : null;
+      const daysLeft = g.deadline ? Math.ceil((new Date(g.deadline) - new Date()) / 86400000) : null;
+      const deadlineTag = (daysLeft != null && daysLeft <= 7 && daysLeft >= 0) ? ` <span style="color:#e53935;font-size:10px;">⚠️${daysLeft}日</span>` : '';
       return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;">
         <div style="flex:1;">
-          <div style="font-size:13px;">${escHtml(g.goal)}</div>
+          <div style="font-size:13px;">${escHtml(g.goal)}${deadlineTag}</div>
           ${pct != null ? `<div style="display:flex;align-items:center;gap:6px;">
             <div style="background:#eee;border-radius:4px;height:6px;flex:1;overflow:hidden;">
               <div style="background:${pct >= 100 ? '#48bb78' : '#4a9eff'};height:100%;width:${pct}%;border-radius:4px;"></div>
             </div>
             <span style="font-size:11px;color:var(--muted);white-space:nowrap;">${g.current || 0}/${g.target}${g.unit || ''}</span>
           </div>` : ''}
+          ${!hasQuantity && g.deadline ? `<div style="font-size:11px;color:var(--muted);">期限: ${g.deadline}</div>` : ''}
         </div>
       </div>`;
     }).join('');

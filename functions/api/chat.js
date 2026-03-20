@@ -66,7 +66,7 @@ export async function onRequestPost({ request, env }) {
     env.DB.prepare(`SELECT title, author, rating, status, note FROM books ORDER BY datetime DESC LIMIT 5`).all(),
     env.DB.prepare(`SELECT key, value FROM settings WHERE key IN ('char_system_prompt', 'char_name', 'gcal_access_token', 'gcal_refresh_token', 'gcal_token_expires')`).all(),
     env.DB.prepare(`SELECT date, steps, active_minutes, weight FROM fitness ORDER BY date DESC LIMIT 7`).all(),
-    env.DB.prepare(`SELECT goal, target, unit, freq, start, deadline, status FROM goals WHERE status = 'active' LIMIT 5`).all(),
+    env.DB.prepare(`SELECT goal, target, unit, freq, start, deadline, memo, status FROM goals WHERE status = 'active' LIMIT 5`).all(),
     env.DB.prepare(`SELECT DISTINCT substr(datetime, 1, 10) as date FROM entries WHERE text LIKE '%生理%' ORDER BY date DESC LIMIT 5`).all(),
   ]);
 
@@ -160,8 +160,12 @@ ${activeGoals.length ? (await Promise.all(activeGoals.map(async g => {
       current = r?.weight || 0;
     }
   }
-  const pct = g.target ? Math.min(100, Math.round((current / g.target) * 100)) : 0;
-  return `- ${g.goal}（目標:${g.target}${g.unit}/${g.freq}）→ 現在:${current}${g.unit} (${pct}%)${g.deadline ? ` 期限:${g.deadline}` : ''}`;
+  if (g.target) {
+    const pct = Math.min(100, Math.round((current / g.target) * 100));
+    return `- ${g.goal}（目標:${g.target}${g.unit}/${g.freq || ''}）→ 現在:${current}${g.unit} (${pct}%)${g.deadline ? ` 期限:${g.deadline}` : ''}${g.memo ? ` メモ:${g.memo}` : ''}`;
+  } else {
+    return `- ${g.goal}（定性目標）${g.deadline ? ` 期限:${g.deadline}` : ''}${g.memo ? ` メモ:${g.memo}` : ''}`;
+  }
 }))).join('\n') : '未設定'}
 
 生理記録日（直近5回の開始日付近）:

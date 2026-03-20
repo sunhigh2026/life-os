@@ -113,20 +113,21 @@ export async function onRequestPost(context) {
   try {
     const body = await request.json();
     const id = crypto.randomUUID();
-    const { type, goal, target, unit, freq, start, deadline, status } = body;
+    const { type, goal, target, unit, freq, start, deadline, status, memo } = body;
 
     await db.prepare(
-      `INSERT INTO goals (id, type, goal, target, unit, freq, start, deadline, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO goals (id, type, goal, target, unit, freq, start, deadline, memo, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     ).bind(
       id,
       type || 'habit',
       goal || '',
       target ?? null,
       unit || null,
-      freq || 'monthly',
+      freq || null,
       start || null,
       deadline || null,
+      memo || null,
       status || 'active'
     ).run();
 
@@ -145,7 +146,7 @@ export async function onRequestPut(context) {
     const { id, ...fields } = body;
     if (!id) return json({ ok: false, error: 'id is required' }, 400);
 
-    const allowed = ['type', 'goal', 'target', 'unit', 'freq', 'start', 'deadline', 'status'];
+    const allowed = ['type', 'goal', 'target', 'unit', 'freq', 'start', 'deadline', 'memo', 'status'];
     const setClauses = [];
     const values = [];
 
