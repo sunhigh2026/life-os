@@ -440,16 +440,41 @@ async function loadFitness() {
     const el = document.getElementById('fitnessInfo');
     const today = data.today;
     const recent = data.fitness || [];
-    if (today || recent.length) {
-      section.style.display = '';
-      const parts = [];
-      if (today?.steps) parts.push(`🚶 ${today.steps.toLocaleString()} 歩`);
-      if (today?.active_minutes) parts.push(`🏃 ${today.active_minutes} 分`);
-      // 最新の体重（今日になくても直近7日で表示）
-      const latestWeight = recent.find(r => r.weight);
-      if (latestWeight) parts.push(`⚖️ ${latestWeight.weight} kg`);
-      if (parts.length) el.innerHTML = parts.join('<span style="color:var(--border);margin:0 4px;">|</span>');
-      else section.style.display = 'none';
+    if (!recent.length) return;
+
+    section.style.display = '';
+
+    // 今日のデータがあればそれ、なければ直近のデータを表示
+    const latest = today || recent[0];
+    const label = today ? '今日' : latest.date.slice(5).replace('-', '/');
+
+    const parts = [];
+    if (latest?.steps) parts.push(`🚶 ${latest.steps.toLocaleString()} 歩`);
+    if (latest?.active_minutes) parts.push(`🏃 ${latest.active_minutes} 分`);
+    // 最新の体重（直近7日）
+    const latestWeight = recent.find(r => r.weight);
+    if (latestWeight) parts.push(`⚖️ ${latestWeight.weight} kg`);
+
+    if (parts.length) {
+      const dateTag = today ? '' : `<span style="font-size:11px;color:var(--muted);margin-right:4px;">(${label})</span>`;
+      el.innerHTML = dateTag + parts.join('<span style="color:var(--border);margin:0 4px;">|</span>');
+
+      // 直近7日の歩数ミニグラフ
+      if (recent.length >= 2) {
+        const barData = recent.slice(0, 7).reverse();
+        const maxSteps = Math.max(...barData.map(r => r.steps || 0), 1);
+        const bars = barData.map(r => {
+          const h = Math.max(2, Math.round(((r.steps || 0) / maxSteps) * 32));
+          const isToday = r.date === (today?.date || '');
+          return `<div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
+            <div style="width:12px;height:${h}px;background:${isToday ? '#4a9eff' : '#cbd5e1'};border-radius:2px;"></div>
+            <span style="font-size:9px;color:var(--muted);">${r.date.slice(8)}</span>
+          </div>`;
+        }).join('');
+        el.innerHTML += `<div style="display:flex;gap:3px;align-items:flex-end;margin-top:8px;">${bars}</div>`;
+      }
+    } else {
+      section.style.display = 'none';
     }
   } catch (_) {}
 }

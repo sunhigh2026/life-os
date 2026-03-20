@@ -6,13 +6,14 @@
 //     LIFE_OS_URL  = https://life-os-7pj.pages.dev
 //     AUTH_KEY     = hidapia2026
 //     SHEET_ID     = 1TJ6Q6tHzxz7fN4PxbMD7fWMVIW6eyoxKYiyeXKgz35w
-//     FITNESS_SHEET_NAME = (任意) Health Syncが書き出すシート名
+//     FITNESS_STEPS_FOLDER_ID    = Google DriveのフォルダID（歩数CSV）
+//     FITNESS_ACTIVITY_FOLDER_ID = Google DriveのフォルダID（アクティビティCSV）
 //
 // 【使い方】
 //   1. スクリプトプロパティを設定（上記）
 //   2. setupTrigger を一度だけ実行 → 毎日AM6:00に自動同期
 //   3. 手動同期はメニュー「🗂 Life OS → 今すぐ同期」またはsyncAll実行
-//   4. フィットネス連携: Health Sync等でスプシにデータ出力 → FITNESS_SHEET_NAMEを設定
+//   4. フィットネス連携: Health SyncがDriveに保存するCSVフォルダのIDを設定
 // ============================================================
 
 // シート名の定義
@@ -78,7 +79,7 @@ function syncAll() {
     }
   });
 
-  // フィットネスデータをスプシ → Life OS にアップロード
+  // フィットネスデータを Drive CSV → Life OS にアップロード
   try {
     const fitnessResult = syncFitnessToLifeOS(ss, config);
     results.push(fitnessResult);
@@ -86,8 +87,91 @@ function syncAll() {
     results.push(`❌ フィットネス同期: ${e.message}`);
   }
 
+  // Life OS のフィットネスデータをスプシにも書き出し
+  try {
+    const fitnessSheetResult = writeFitnessSheet(ss, config);
+    results.push(fitnessSheetResult);
+  } catch (e) {
+    results.push(`❌ フィットネスシート: ${e.message}`);
+  }
+
   writeLog(ss, results);
   Logger.log(results.join('\n'));
+}
+
+// ============================================================
+// フィットネスデータをスプシに書き出し（Life OS API から取得）
+// ============================================================
+function writeFitnessSheet(ss, config) {
+  const url = `${config.lifeOsUrl}/api/fitness?days=90`;
+  const res = UrlFetchApp.fetch(url, {
+    method: 'get',
+    headers: { 'Authorization': `Bearer ${config.authKey}` },
+    muteHttpExceptions: true,
+  });
+
+  if (res.getResponseCode() !== 200) {
+    return `❌ フィットネスシート: API ${res.getResponseCode()}`;
+  }
+
+  const data = JSON.parse(res.getContentText());
+  const rows = data.fitness || [];
+
+  let sheet = ss.getSheetByName('フィットネス');
+  if (!sheet) {
+    sheet = ss.insertSheet('フィットネス');
+  }
+  sheet.clearContents();
+  sheet.clearFormats();
+
+  if (!rows.length) {
+    sheet.getRange(1, 1).setValue('フィットネスデータなし');
+    return '⏭ フィットネスシート: データなし';
+  }
+
+  // ヘッダー
+  const headers = ['日付', '歩数', '運動時間(分)', '体重(kg)'];
+  const dataRows = rows.map(r => [
+    r.date,
+    r.steps || '',
+    r.active_minutes || '',
+    r.weight || '',
+  ]);
+
+  const allRows = [headers, ...dataRows];
+  sheet.getRange(1, 1, allRows.length, headers.length).setValues(allRows);
+
+  // ヘッダー書式
+  sheet.getRange(1, 1, 1, headers.length)
+    .setBackground('#48bb78')
+    .setFontColor('#ffffff')
+    .setFontWeight('bold')
+    .setHorizontalAlignment('center');
+
+  // 交互背景色
+  for (let i = 0; i < dataRows.length; i++) {
+    sheet.getRange(i + 2, 1, 1, headers.length)
+      .setBackground(i % 2 === 0 ? '#f0fff4' : '#ffffff');
+  }
+
+  // 数値列を右寄せ
+  if (dataRows.length > 0) {
+    sheet.getRange(2, 2, dataRows.length, 3).setHorizontalAlignment('right');
+  }
+
+  sheet.autoResizeColumns(1, headers.length);
+
+  // フィルタ
+  try { sheet.getFilter()?.remove(); } catch (_) {}
+  sheet.getRange(1, 1, allRows.length, headers.length).createFilter();
+
+  // 最終更新
+  sheet.getRange(1, headers.length + 2)
+    .setValue('最終更新: ' + Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy/MM/dd HH:mm'))
+    .setFontColor('#888888')
+    .setFontSize(9);
+
+  return `✅ フィットネスシート: ${rows.length}件`;
 }
 
 // ============================================================
@@ -302,52 +386,70 @@ function _sendReport(type) {
 }
 
 // ============================================================
-// フィットネス: スプシ → Life OS に同期
-// Health Sync等がスプシに書き出したデータを読み取りPOST
+// フィットネス: Google Drive CSV → Life OS に同期
+// Health Sync が Drive にCSVを保存する場合に対応
 // ============================================================
+// 【スクリプトプロパティに追加】
+//   FITNESS_STEPS_FOLDER_ID    = 12bQVY129OFhtMwoGvjb8E6pZFXcDTJ15
+//   FITNESS_ACTIVITY_FOLDER_ID = 1-TVvesMBU1lmvaxYtAz_hIMakxtMwauR
+// ============================================================
+
 function syncFitnessToLifeOS(ss, config) {
   const props = PropertiesService.getScriptProperties();
-  const fitnessSheetName = props.getProperty('FITNESS_SHEET_NAME');
-  if (!fitnessSheetName) return '⏭ フィットネス: FITNESS_SHEET_NAME未設定（スキップ）';
+  const stepsFolderId    = props.getProperty('FITNESS_STEPS_FOLDER_ID');
+  const activityFolderId = props.getProperty('FITNESS_ACTIVITY_FOLDER_ID');
 
-  const sheet = ss.getSheetByName(fitnessSheetName);
-  if (!sheet) return `⏭ フィットネス: シート「${fitnessSheetName}」が見つかりません`;
-
-  const data = sheet.getDataRange().getValues();
-  if (data.length < 2) return '⏭ フィットネス: データなし';
-
-  const headers = data[0].map(h => String(h).trim().toLowerCase());
-  const dateIdx = headers.findIndex(h => h === 'date' || h === '日付');
-  const stepsIdx = headers.findIndex(h => h === 'steps' || h === '歩数');
-  const activeIdx = headers.findIndex(h => h.includes('active') || h === '運動時間');
-  const weightIdx = headers.findIndex(h => h === 'weight' || h === '体重');
-
-  if (dateIdx < 0) return '❌ フィットネス: date/日付カラムが見つかりません';
+  if (!stepsFolderId && !activityFolderId) {
+    return '⏭ フィットネス: FITNESS_STEPS_FOLDER_ID / FITNESS_ACTIVITY_FOLDER_ID 未設定（スキップ）';
+  }
 
   // 直近30日分だけ同期
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - 30);
+
+  // 日付ごとにデータを集約
+  const byDate = {};
+
+  // 歩数フォルダ読み取り
+  if (stepsFolderId) {
+    try {
+      const stepsData = _readAllCsvFromFolder(stepsFolderId, cutoff);
+      stepsData.forEach(row => {
+        if (!byDate[row.date]) byDate[row.date] = {};
+        if (row.steps)          byDate[row.date].steps = row.steps;
+        if (row.weight)         byDate[row.date].weight = row.weight;
+        if (row.active_minutes) byDate[row.date].active_minutes = row.active_minutes;
+      });
+    } catch (e) {
+      Logger.log('歩数フォルダ読み取りエラー: ' + e.message);
+    }
+  }
+
+  // アクティビティフォルダ読み取り
+  if (activityFolderId) {
+    try {
+      const actData = _readAllCsvFromFolder(activityFolderId, cutoff);
+      actData.forEach(row => {
+        if (!byDate[row.date]) byDate[row.date] = {};
+        if (row.steps)          byDate[row.date].steps = row.steps;
+        if (row.weight)         byDate[row.date].weight = row.weight;
+        if (row.active_minutes) byDate[row.date].active_minutes = row.active_minutes;
+      });
+    } catch (e) {
+      Logger.log('アクティビティフォルダ読み取りエラー: ' + e.message);
+    }
+  }
+
+  // Life OS に POST
+  const dates = Object.keys(byDate);
   let synced = 0;
 
-  for (let i = 1; i < data.length; i++) {
-    const rawDate = data[i][dateIdx];
-    if (!rawDate) continue;
-
-    let dateStr;
-    if (rawDate instanceof Date) {
-      dateStr = Utilities.formatDate(rawDate, 'Asia/Tokyo', 'yyyy-MM-dd');
-    } else {
-      dateStr = String(rawDate).trim();
-      if (!dateStr.match(/^\d{4}-\d{2}-\d{2}/)) continue;
-      dateStr = dateStr.slice(0, 10);
-    }
-
-    if (new Date(dateStr) < cutoff) continue;
-
-    const payload = { date: dateStr };
-    if (stepsIdx >= 0 && data[i][stepsIdx]) payload.steps = parseInt(data[i][stepsIdx]) || null;
-    if (activeIdx >= 0 && data[i][activeIdx]) payload.active_minutes = parseInt(data[i][activeIdx]) || null;
-    if (weightIdx >= 0 && data[i][weightIdx]) payload.weight = parseFloat(data[i][weightIdx]) || null;
+  for (const date of dates) {
+    const d = byDate[date];
+    const payload = { date };
+    if (d.steps)          payload.steps = d.steps;
+    if (d.active_minutes) payload.active_minutes = d.active_minutes;
+    if (d.weight)         payload.weight = d.weight;
 
     if (!payload.steps && !payload.active_minutes && !payload.weight) continue;
 
@@ -362,6 +464,123 @@ function syncFitnessToLifeOS(ss, config) {
     } catch (_) {}
   }
 
-  return `✅ フィットネス同期: ${synced}件`;
+  return `✅ フィットネス同期: ${synced}件（${dates.length}日分のCSV読取）`;
+}
+
+// ============================================================
+// Google Drive フォルダ内の全CSVを読み取り
+// ============================================================
+function _readAllCsvFromFolder(folderId, cutoff) {
+  const folder = DriveApp.getFolderById(folderId);
+  // MIMEタイプに依存せず全ファイル取得（Health SyncのCSVが text/plain 等になる場合がある）
+  const files = folder.getFiles();
+  const results = [];
+  const oldFiles = []; // 削除対象
+
+  while (files.hasNext()) {
+    const file = files.next();
+    const name = file.getName().toLowerCase();
+
+    // CSVファイルのみ対象
+    if (!name.endsWith('.csv')) continue;
+
+    // 30日以上前のファイルは読み取らず削除対象に
+    if (file.getLastUpdated() < cutoff) {
+      oldFiles.push(file);
+      continue;
+    }
+
+    try {
+      const csv = file.getBlob().getDataAsString('UTF-8');
+      const rows = _parseCsv(csv);
+      results.push(...rows);
+    } catch (e) {
+      Logger.log(`CSV読取エラー (${file.getName()}): ${e.message}`);
+    }
+  }
+
+  // 古いCSVをゴミ箱に移動
+  for (const f of oldFiles) {
+    try {
+      f.setTrashed(true);
+      Logger.log(`🗑 古いCSV削除: ${f.getName()}`);
+    } catch (e) {
+      Logger.log(`削除エラー (${f.getName()}): ${e.message}`);
+    }
+  }
+  if (oldFiles.length > 0) {
+    Logger.log(`🗑 古いCSV ${oldFiles.length}件をゴミ箱に移動`);
+  }
+
+  return results;
+}
+
+// ============================================================
+// CSV パース（Health Sync 形式に柔軟対応）
+// 分単位の細かいデータを日別に集計して返す
+// ============================================================
+function _parseCsv(csvText) {
+  const lines = csvText.split('\n').filter(l => l.trim());
+  if (lines.length < 2) return [];
+
+  const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/"/g, ''));
+
+  // カラム名マッピング（Health Sync の様々な形式に対応）
+  const dateIdx   = headers.findIndex(h => h === 'date' || h === '日付' || h.includes('date'));
+  const stepsIdx  = headers.findIndex(h => h === 'steps' || h === '歩数' || h.includes('step'));
+  const weightIdx = headers.findIndex(h => h === 'weight' || h === '体重' || h.includes('weight'));
+
+  // 運動時間: 「活動時間」(秒)、「運動時間」(分)、active/duration/minute
+  const activeIdx    = headers.findIndex(h => h.includes('active') || h.includes('duration') || h === '運動時間' || h.includes('minute'));
+  const activeSecIdx = headers.findIndex(h => h === '活動時間' || h === '経過時間');  // 秒単位のカラム
+  const distIdx      = headers.findIndex(h => h.includes('距離') || h.includes('distance'));
+
+  if (dateIdx < 0) return [];
+
+  // 日別に集計（歩数=合計、体重=最新値、運動時間=合計）
+  const byDay = {};
+
+  for (let i = 1; i < lines.length; i++) {
+    const cols = lines[i].split(',').map(c => c.trim().replace(/"/g, ''));
+    if (!cols[dateIdx]) continue;
+
+    // 日付パース: "2026.03.19 07:11:00" や "2026.03.19" → "2026-03-19"
+    let dateStr = cols[dateIdx];
+    dateStr = dateStr.replace(/\./g, '-').replace(/\//g, '-').slice(0, 10);
+    if (!dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) continue;
+
+    if (!byDay[dateStr]) byDay[dateStr] = { steps: 0, active_minutes: 0, weight: null };
+
+    if (stepsIdx >= 0 && cols[stepsIdx]) {
+      const v = parseInt(cols[stepsIdx]);
+      if (!isNaN(v) && v > 0) byDay[dateStr].steps += v;  // 合計
+    }
+
+    // 活動時間（秒） → 分に変換して加算
+    if (activeSecIdx >= 0 && cols[activeSecIdx]) {
+      const v = parseInt(cols[activeSecIdx]);
+      if (!isNaN(v) && v > 0) byDay[dateStr].active_minutes += Math.round(v / 60);
+    } else if (activeIdx >= 0 && cols[activeIdx]) {
+      const v = parseInt(cols[activeIdx]);
+      if (!isNaN(v) && v > 0) byDay[dateStr].active_minutes += v;
+    }
+
+    if (weightIdx >= 0 && cols[weightIdx]) {
+      const v = parseFloat(cols[weightIdx]);
+      if (!isNaN(v) && v > 0) byDay[dateStr].weight = v;  // 最新値で上書き
+    }
+  }
+
+  // 集計結果を配列に変換
+  const results = [];
+  for (const [date, d] of Object.entries(byDay)) {
+    const row = { date };
+    if (d.steps > 0)          row.steps = d.steps;
+    if (d.active_minutes > 0) row.active_minutes = d.active_minutes;
+    if (d.weight)             row.weight = d.weight;
+    results.push(row);
+  }
+
+  return results;
 }
 
