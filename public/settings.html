@@ -17,13 +17,167 @@
     .btn-danger { background: #fff5f5; border-color: #ffcdd2; color: #e53935; }
     .file-input { display: none; }
     .import-area { border: 2px dashed var(--border); border-radius: 12px; padding: 16px; text-align: center; color: var(--muted); font-size: 13px; cursor: pointer; }
-    .import-area:hover { border-color: var(--accent); color: var(--accent); }
-    .report-card { background: linear-gradient(135deg, #fff0f5 0%, #f0f0ff 100%); border-radius: 12px; padding: 16px; margin-top: 8px; }
-    .report-card .comment { font-size: 13px; line-height: 1.6; }
-    .stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; margin: 8px 0; }
-    .stat-item { text-align: center; padding: 8px; background: #fff; border-radius: 10px; }
-    .stat-item .num { font-size: 20px; font-weight: 700; }
-    .stat-item .label { font-size: 11px; color: var(--muted); }
+    .import-area:hover { border-color: var(--primary); color: var(--primary-dark); }
+
+    /* ===== 週次レポート ===== */
+    .rpt-section { margin-top: 12px; display: flex; flex-direction: column; gap: 12px; }
+
+    /* ① サマリー */
+    .rpt-summary {
+      display: flex; align-items: flex-start; gap: 12px;
+      background: var(--primary-light); border-radius: 16px;
+      padding: 14px 16px; border: 1px solid var(--border);
+    }
+    .rpt-pia-icon {
+      width: 48px; height: 48px; border-radius: 50%;
+      object-fit: cover; object-position: center 20%;
+      flex-shrink: 0; border: 2px solid var(--primary);
+    }
+    .rpt-summary-text { font-size: 14px; line-height: 1.7; color: var(--text-main); }
+    .rpt-period { font-size: 11px; color: var(--text-sub); margin-bottom: 4px; }
+
+    /* ② 数字グリッド */
+    .rpt-stat-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+    }
+    .rpt-stat-item {
+      background: #fff; border: 1px solid var(--border);
+      border-radius: 12px; padding: 10px 14px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .rpt-stat-icon { font-size: 20px; flex-shrink: 0; }
+    .rpt-stat-body { flex: 1; min-width: 0; }
+    .rpt-stat-num { font-size: 20px; font-weight: 700; color: var(--text-main); line-height: 1.1; }
+    .rpt-stat-label { font-size: 11px; color: var(--text-sub); }
+    .rpt-delta { font-size: 11px; margin-top: 1px; }
+    .rpt-delta.up   { color: #10b981; }
+    .rpt-delta.down { color: #ef4444; }
+    .rpt-delta.flat { color: var(--text-sub); }
+
+    /* ③ mood推移 */
+    .rpt-mood-chart {
+      display: flex; gap: 4px; align-items: flex-end;
+      padding: 12px 0 4px;
+    }
+    .rpt-mood-day {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; gap: 3px;
+    }
+    .rpt-mood-bar-wrap {
+      width: 100%; height: 60px;
+      display: flex; align-items: flex-end; justify-content: center;
+    }
+    .rpt-mood-bar {
+      width: 70%; border-radius: 4px 4px 0 0;
+      background: var(--primary); min-height: 3px;
+    }
+    .rpt-mood-bar.empty { background: var(--border); height: 4px; }
+    .rpt-mood-emoji { font-size: 14px; line-height: 1; }
+    .rpt-mood-label { font-size: 10px; color: var(--text-sub); }
+
+    /* ④ ハイライトカード */
+    .rpt-highlights { display: flex; flex-direction: column; gap: 8px; }
+    .rpt-highlight-card {
+      border-radius: 14px; padding: 14px;
+      display: flex; gap: 12px; align-items: flex-start;
+    }
+    .rpt-highlight-card.best  { background: #f0fdf4; border: 1px solid #bbf7d0; }
+    .rpt-highlight-card.tough { background: #fff0f5; border: 1px solid #fecdd3; }
+    .rpt-hl-emoji { font-size: 32px; flex-shrink: 0; line-height: 1; }
+    .rpt-hl-body { flex: 1; min-width: 0; }
+    .rpt-hl-date { font-size: 11px; color: var(--text-sub); margin-bottom: 3px; }
+    .rpt-hl-quote {
+      font-size: 13px; color: var(--text-main); font-weight: 500;
+      margin-bottom: 5px; line-height: 1.5;
+      border-left: 3px solid var(--border); padding-left: 8px;
+    }
+    .rpt-hl-comment { font-size: 12px; color: var(--text-sub); line-height: 1.6; }
+
+    /* ⑤ ToDo振り返り */
+    .rpt-todo-done-list { list-style: none; padding: 0; margin: 0 0 8px; }
+    .rpt-todo-done-list li {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 13px; padding: 4px 0;
+      border-bottom: 1px solid var(--border); color: var(--text-sub);
+    }
+    .rpt-todo-done-list li:last-child { border-bottom: none; }
+    .rpt-todo-open-list { list-style: none; padding: 0; margin: 0 0 8px; }
+    .rpt-todo-open-list li {
+      font-size: 13px; padding: 4px 0;
+      border-bottom: 1px solid var(--border); color: var(--text-main);
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .rpt-todo-open-list li:last-child { border-bottom: none; }
+    .rpt-due { font-size: 11px; color: var(--text-sub); white-space: nowrap; }
+    .rpt-due.overdue { color: #ef4444; font-weight: 600; }
+    .rpt-pia-comment {
+      background: var(--primary-light); border-radius: 10px;
+      padding: 10px 12px; font-size: 13px; color: var(--text-main);
+      line-height: 1.6; border: 1px solid var(--border);
+    }
+
+    /* ⑥ 読書コーナー */
+    .rpt-book-row {
+      display: flex; gap: 10px; align-items: flex-start;
+      padding: 8px 0; border-bottom: 1px solid var(--border);
+    }
+    .rpt-book-cover {
+      width: 44px; height: 62px; object-fit: cover;
+      border-radius: 6px; background: var(--primary-light); flex-shrink: 0;
+    }
+    .rpt-book-info { flex: 1; min-width: 0; }
+    .rpt-book-title { font-size: 13px; font-weight: 600; color: var(--text-main); }
+    .rpt-book-author { font-size: 11px; color: var(--text-sub); }
+    .rpt-stars { font-size: 13px; color: var(--primary); }
+
+    /* ⑦ 歩数グラフ */
+    .rpt-steps-chart {
+      display: flex; gap: 4px; align-items: flex-end; padding: 8px 0 4px;
+    }
+    .rpt-steps-col {
+      flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;
+    }
+    .rpt-steps-num { font-size: 8px; color: var(--text-sub); }
+    .rpt-steps-bar-wrap {
+      width: 100%; height: 60px;
+      display: flex; align-items: flex-end; justify-content: center;
+    }
+    .rpt-steps-bar {
+      width: 70%; border-radius: 3px 3px 0 0;
+      background: var(--primary); min-height: 3px;
+    }
+    .rpt-steps-bar.today { background: var(--primary-dark); }
+    .rpt-steps-label { font-size: 10px; color: var(--text-sub); }
+
+    /* ⑧ 来週の予定 */
+    .rpt-cal-day { margin-bottom: 10px; }
+    .rpt-cal-date {
+      font-size: 12px; font-weight: 600; color: var(--primary-dark);
+      margin-bottom: 4px; padding-bottom: 2px;
+      border-bottom: 1px solid var(--border);
+    }
+    .rpt-cal-event {
+      display: flex; gap: 8px; align-items: baseline;
+      font-size: 12px; color: var(--text-main); padding: 3px 0;
+    }
+    .rpt-cal-time { color: var(--text-sub); white-space: nowrap; font-size: 11px; flex-shrink: 0; }
+    .rpt-cal-loc { font-size: 11px; color: var(--text-sub); }
+
+    /* ⑨ 来週アドバイス */
+    .rpt-advice-bubble {
+      background: var(--primary-light); border-radius: 0 16px 16px 16px;
+      padding: 12px 14px; font-size: 13px; color: var(--text-main);
+      line-height: 1.8; border: 1px solid var(--border);
+    }
+    .rpt-advice-header {
+      display: flex; align-items: flex-end; gap: 8px; margin-bottom: 4px;
+    }
+
+    /* 折りたたみ */
+    .rpt-expand-btn {
+      font-size: 12px; color: var(--primary-dark); background: none;
+      border: none; cursor: pointer; padding: 4px 0;
+    }
   </style>
 </head>
 <body>
@@ -32,7 +186,10 @@
   <!-- 週次レポート -->
   <div class="settings-section">
     <h3>📊 週次レポート</h3>
-    <button class="btn-action" onclick="generateReport('weekly')">今週のレポートを生成</button>
+    <button class="btn-submit" onclick="generateReport('weekly')" id="reportBtn"
+      style="width:100%;font-size:15px;padding:12px;">
+      🐾 今週のレポートを生成
+    </button>
     <div id="reportArea"></div>
   </div>
 
@@ -220,28 +377,273 @@ async function importAudible(input) {
 }
 
 // === 週次レポート ===
+const MOOD_EMOJI = ['', '😢', '😞', '😐', '🙂', '😊', '🤩'];
+const moodEmoji  = m => MOOD_EMOJI[Math.round(m)] || '➖';
+
+function deltaHtml(cur, prev, positiveGood = true) {
+  if (prev == null || cur == null) return '';
+  const d = Math.round((cur - prev) * 10) / 10;
+  if (d === 0) return '<span class="rpt-delta flat">±0</span>';
+  const good = positiveGood ? d > 0 : d < 0;
+  return `<span class="rpt-delta ${good ? 'up' : 'down'}">${d > 0 ? '↑' : '↓'}${Math.abs(d)}</span>`;
+}
+
+function statItem(icon, label, value, delta = '') {
+  return `<div class="rpt-stat-item">
+    <div class="rpt-stat-icon">${icon}</div>
+    <div class="rpt-stat-body">
+      <div class="rpt-stat-num">${value}</div>
+      <div class="rpt-stat-label">${label}</div>
+      ${delta}
+    </div>
+  </div>`;
+}
+
+function renderMoodChart(moodByDay) {
+  if (!moodByDay || !moodByDay.length) return '';
+  const bars = moodByDay.map(d => {
+    const pct = d.avgMood ? Math.round((d.avgMood / 6) * 100) : 0;
+    return `<div class="rpt-mood-day">
+      <div class="rpt-mood-bar-wrap">
+        <div class="rpt-mood-bar${d.avgMood ? '' : ' empty'}" style="height:${pct}%;"></div>
+      </div>
+      <div class="rpt-mood-emoji">${d.emoji || '—'}</div>
+      <div class="rpt-mood-label">${d.day}</div>
+    </div>`;
+  }).join('');
+  return `<div class="rpt-mood-chart">${bars}</div>`;
+}
+
+function renderStepsChart(fitnessPerDay, from) {
+  if (!fitnessPerDay || !fitnessPerDay.length) return '';
+  const today = new Date().toISOString().slice(0, 10);
+  const maxSteps = Math.max(...fitnessPerDay.map(f => f.steps || 0), 1);
+  const labels = ['月', '火', '水', '木', '金', '土', '日'];
+
+  // Build date→data map
+  const byDate = {};
+  fitnessPerDay.forEach(f => { byDate[f.date] = f; });
+
+  const cols = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(from + 'T00:00:00Z');
+    d.setUTCDate(d.getUTCDate() + i);
+    const ds = d.toISOString().slice(0, 10);
+    const f  = byDate[ds];
+    const steps = f?.steps || 0;
+    const pct   = Math.round((steps / maxSteps) * 100);
+    const isToday = ds === today;
+    return `<div class="rpt-steps-col">
+      <div class="rpt-steps-num">${steps ? steps.toLocaleString() : ''}</div>
+      <div class="rpt-steps-bar-wrap">
+        <div class="rpt-steps-bar${isToday ? ' today' : ''}" style="height:${steps ? Math.max(pct, 4) : 4}%;${!steps ? 'background:var(--border);' : ''}"></div>
+      </div>
+      <div class="rpt-steps-label">${labels[i]}</div>
+    </div>`;
+  }).join('');
+  return `<div class="rpt-steps-chart">${cols}</div>`;
+}
+
+function renderCalendar(events, todos) {
+  if (!events.length && !todos.length) {
+    return '<div style="font-size:13px;color:var(--muted);">来週はゆったりだね〜 🍃</div>';
+  }
+
+  // Group events by date
+  const byDate = {};
+  events.forEach(e => {
+    if (!byDate[e.date]) byDate[e.date] = [];
+    byDate[e.date].push(e);
+  });
+
+  const dayNames = { '0': '日', '1': '月', '2': '火', '3': '水', '4': '木', '5': '金', '6': '土' };
+  const sortedDates = Object.keys(byDate).sort();
+
+  let html = sortedDates.map(d => {
+    const dt = new Date(d + 'T00:00:00Z');
+    const dn = dayNames[String(dt.getUTCDay())];
+    const evs = byDate[d].map(e => `
+      <div class="rpt-cal-event">
+        <span class="rpt-cal-time">${e.allDay ? '終日' : `${e.startTime}${e.endTime ? '–' + e.endTime : ''}`}</span>
+        <span>${escHtml(e.title)}${e.location ? ` <span class="rpt-cal-loc">@${escHtml(e.location)}</span>` : ''}</span>
+      </div>`).join('');
+    return `<div class="rpt-cal-day">
+      <div class="rpt-cal-date">${d.slice(5).replace('-', '/')} (${dn})</div>
+      ${evs}
+    </div>`;
+  }).join('');
+
+  if (todos.length) {
+    const today = new Date().toISOString().slice(0, 10);
+    html += `<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);">
+      <div style="font-size:11px;color:var(--text-sub);margin-bottom:4px;">来週期限のToDo</div>
+      ${todos.map(t => {
+        const overdue = t.due < today;
+        return `<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;color:var(--text-main);">
+          <span>□ ${escHtml(t.text)}</span>
+          <span class="rpt-due${overdue ? ' overdue' : ''}">${t.due}</span>
+        </div>`;
+      }).join('')}
+    </div>`;
+  }
+  return html;
+}
+
 async function generateReport(type) {
-  const el = document.getElementById('reportArea');
-  el.innerHTML = '<div style="padding:12px;color:var(--muted);font-size:13px;">🐾 ピアちゃんがレポートを作成中...</div>';
+  const el  = document.getElementById('reportArea');
+  const btn = document.getElementById('reportBtn');
+  btn.disabled = true;
+  btn.textContent = '🐾 ピアちゃんが作成中...';
+  el.innerHTML = '';
+
   try {
     const data = await apiFetch(`/api/report?type=${type}`);
-    const s = data.stats || {};
-    el.innerHTML = `
-      <div class="report-card">
-        <div class="stat-grid">
-          <div class="stat-item"><div class="num">${s.entryCount || 0}</div><div class="label">日記</div></div>
-          <div class="stat-item"><div class="num">${s.avgMood ? s.avgMood.toFixed(1) : '-'}</div><div class="label">平均mood</div></div>
-          <div class="stat-item"><div class="num">${s.todoCompleted || 0}</div><div class="label">ToDo完了</div></div>
-          <div class="stat-item"><div class="num">${s.todoRemaining || 0}</div><div class="label">ToDo残</div></div>
-          <div class="stat-item"><div class="num">${s.booksFinished || 0}</div><div class="label">読了</div></div>
-          <div class="stat-item"><div class="num">${s.avgSteps ? Math.round(s.avgSteps).toLocaleString() : '-'}</div><div class="label">平均歩数</div></div>
-        </div>
-        <div class="comment">🐾 ${escHtml(data.comment || '')}</div>
-        ${data.emailSent ? '<div style="font-size:11px;color:var(--muted);margin-top:8px;">✉️ メールも送信しました</div>' : ''}
+    const s   = data.stats    || {};
+    const lw  = data.lastWeek || {};
+    const wd  = data.weekData || {};
+    const pia = data.piaComment || {};
+    const entries     = wd.entries      || [];
+    const doneTodos   = wd.doneTodos    || [];
+    const openTodos   = wd.openTodos    || [];
+    const books       = wd.books        || [];
+    const fitnessPerDay = wd.fitnessPerDay || [];
+    const nextWeekEvents = data.nextWeekEvents || [];
+    const nextWeekTodos  = data.nextWeekTodos  || [];
+
+    let html = `<div class="rpt-section">`;
+
+    // ① ピアちゃんサマリー
+    html += `<div class="rpt-summary">
+      <img src="/pia-normal.png" class="rpt-pia-icon" alt="ピアちゃん" onerror="this.src='/icon-pia.png'">
+      <div>
+        <div class="rpt-period">${data.periodLabel || ''}</div>
+        <div class="rpt-summary-text">${escHtml(pia.summary || '...')}</div>
       </div>
-    `;
+    </div>`;
+
+    // ② 数字グリッド
+    html += `<div class="rpt-stat-grid">
+      ${statItem('📝', '日記', `${s.entryCount || 0}件`, deltaHtml(s.entryCount, lw.entryCount))}
+      ${statItem(s.avgMood ? moodEmoji(s.avgMood) : '➖', '平均mood', s.avgMood ? s.avgMood.toFixed(1) : '—', deltaHtml(s.avgMood, lw.avgMood))}
+      ${statItem('✅', 'ToDo完了', `${s.todoCompleted || 0}件`, deltaHtml(s.todoCompleted, lw.todoDone))}
+      ${statItem('📋', 'ToDo残', `${s.todoRemaining || 0}件`, deltaHtml(s.todoRemaining, null, false))}
+      ${statItem('📚', '読書', `${s.booksFinished || 0}冊`, deltaHtml(s.booksFinished, lw.bookCount))}
+      ${statItem('🚶', '平均歩数', s.avgSteps ? s.avgSteps.toLocaleString() : '—', deltaHtml(s.avgSteps, lw.avgSteps))}
+    </div>`;
+
+    // ③ mood推移
+    if (entries.length) {
+      html += `<div class="settings-section" style="margin:0;padding:12px 14px;">
+        <div style="font-size:12px;font-weight:600;color:var(--text-sub);margin-bottom:0;">😊 今週のmood推移</div>
+        ${renderMoodChart(s.moodByDay)}
+      </div>`;
+    }
+
+    // ④ ハイライト
+    const best  = pia.best_moment;
+    const tough = pia.tough_moment;
+    if (best || tough) {
+      html += `<div class="rpt-highlights">`;
+      if (best) {
+        html += `<div class="rpt-highlight-card best">
+          <div class="rpt-hl-emoji">${moodEmoji(best.mood)}</div>
+          <div class="rpt-hl-body">
+            <div class="rpt-hl-date">✨ ベスト — ${best.date || ''}</div>
+            <div class="rpt-hl-quote">「${escHtml(best.quote || '')}」</div>
+            <div class="rpt-hl-comment">${escHtml(best.comment || '')}</div>
+          </div>
+        </div>`;
+      }
+      if (tough) {
+        html += `<div class="rpt-highlight-card tough">
+          <div class="rpt-hl-emoji">${moodEmoji(tough.mood)}</div>
+          <div class="rpt-hl-body">
+            <div class="rpt-hl-date">🫂 タフだった日 — ${tough.date || ''}</div>
+            <div class="rpt-hl-quote">「${escHtml(tough.quote || '')}」</div>
+            <div class="rpt-hl-comment">${escHtml(tough.comment || '')}</div>
+          </div>
+        </div>`;
+      }
+      html += `</div>`;
+    }
+
+    // ⑤ ToDo振り返り
+    if (doneTodos.length || openTodos.length || pia.todo_comment) {
+      const showDone = doneTodos.slice(0, 3);
+      const moreDone = doneTodos.length - showDone.length;
+      const today = new Date().toISOString().slice(0, 10);
+      html += `<div class="settings-section" style="margin:0;padding:12px 14px;">
+        <div style="font-size:12px;font-weight:600;color:var(--text-sub);margin-bottom:8px;">✅ ToDo振り返り</div>
+        ${showDone.length ? `<ul class="rpt-todo-done-list">
+          ${showDone.map(t => `<li><span style="color:#10b981;">✓</span>${escHtml(t.text)}</li>`).join('')}
+          ${moreDone > 0 ? `<li style="color:var(--text-sub);">他 ${moreDone} 件</li>` : ''}
+        </ul>` : ''}
+        ${openTodos.slice(0, 5).length ? `<ul class="rpt-todo-open-list">
+          ${openTodos.slice(0, 5).map(t => {
+            const overdue = t.due && t.due < today;
+            return `<li><span>□ ${escHtml(t.text)}</span>${t.due ? `<span class="rpt-due${overdue ? ' overdue' : ''}">${t.due}</span>` : ''}</li>`;
+          }).join('')}
+        </ul>` : ''}
+        ${pia.todo_comment ? `<div class="rpt-pia-comment">🐾 ${escHtml(pia.todo_comment)}</div>` : ''}
+      </div>`;
+    }
+
+    // ⑥ 読書コーナー
+    if (books.length || pia.book_comment) {
+      html += `<div class="settings-section" style="margin:0;padding:12px 14px;">
+        <div style="font-size:12px;font-weight:600;color:var(--text-sub);margin-bottom:8px;">📚 読書コーナー</div>
+        ${books.map(b => `<div class="rpt-book-row">
+          ${b.cover_url
+            ? `<img class="rpt-book-cover" src="${b.cover_url}" alt="" onerror="this.style.display='none'">`
+            : `<div class="rpt-book-cover" style="display:flex;align-items:center;justify-content:center;font-size:18px;">📖</div>`}
+          <div class="rpt-book-info">
+            <div class="rpt-book-title">${escHtml(b.title)}</div>
+            <div class="rpt-book-author">${escHtml(b.author || '')}</div>
+            ${b.rating ? `<div class="rpt-stars">${'★'.repeat(b.rating)}${'☆'.repeat(5 - b.rating)}</div>` : ''}
+          </div>
+        </div>`).join('')}
+        ${pia.book_comment ? `<div class="rpt-pia-comment" style="margin-top:8px;">🐾 ${escHtml(pia.book_comment)}</div>` : ''}
+      </div>`;
+    }
+
+    // ⑦ からだ（歩数）
+    if (fitnessPerDay.length) {
+      html += `<div class="settings-section" style="margin:0;padding:12px 14px;">
+        <div style="font-size:12px;font-weight:600;color:var(--text-sub);margin-bottom:0;">🚶 からだ</div>
+        ${renderStepsChart(fitnessPerDay, data.period?.from || '')}
+        ${pia.fitness_comment ? `<div class="rpt-pia-comment" style="margin-top:8px;">🐾 ${escHtml(pia.fitness_comment)}</div>` : ''}
+      </div>`;
+    }
+
+    // ⑧ 来週の予定
+    html += `<div class="settings-section" style="margin:0;padding:12px 14px;">
+      <div style="font-size:12px;font-weight:600;color:var(--text-sub);margin-bottom:8px;">📅 来週の予定</div>
+      ${renderCalendar(nextWeekEvents, nextWeekTodos)}
+    </div>`;
+
+    // ⑨ 来週へのアドバイス
+    const advice = pia.next_week_advice || [];
+    if (advice.length) {
+      html += `<div>
+        <div class="rpt-advice-header">
+          <img src="/pia-happy.png" class="rpt-pia-icon" alt="ピアちゃん" onerror="this.src='/icon-pia.png'">
+          <span style="font-size:12px;font-weight:600;color:var(--text-sub);">来週へのアドバイス</span>
+        </div>
+        <div class="rpt-advice-bubble">${advice.map(a => `🌿 ${escHtml(a)}`).join('<br>')}</div>
+      </div>`;
+    }
+
+    // メール送信済みバッジ
+    if (data.emailSent) {
+      html += `<div style="font-size:11px;color:var(--text-sub);text-align:center;padding:4px;">✉️ メールも送信しました</div>`;
+    }
+
+    html += `</div>`;
+    el.innerHTML = html;
   } catch (e) {
-    el.innerHTML = `<div style="color:#e53935;font-size:13px;padding:8px;">エラー: ${e.message}</div>`;
+    el.innerHTML = `<div style="color:#e53935;font-size:13px;padding:12px;">❌ エラー: ${escHtml(e.message)}</div>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🐾 今週のレポートを生成';
   }
 }
 
@@ -370,7 +772,7 @@ function showToast(msg) {
 }
 
 function escHtml(str) {
-  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return (str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 </script>
 </body>

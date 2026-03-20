@@ -227,5 +227,23 @@ export async function onRequestGet({ request, env }) {
     }
   }
 
-  return json({ error: 'action required: auth|callback|status|today|tomorrow|week' }, 400);
+  // --- 来週の予定 ---
+  if (action === 'next-week') {
+    const accessToken = await getValidAccessToken(env);
+    if (!accessToken) return json({ events: [], connected: false });
+    try {
+      // 来週月曜を計算
+      const now = new Date();
+      const jst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+      const day = jst.getUTCDay(); // 0=日
+      const toNextMon = day === 0 ? 1 : 8 - day;
+      const { timeMin, timeMax } = jstDayRange(toNextMon, 7);
+      const events = await fetchEvents(accessToken, timeMin, timeMax);
+      return json({ events, connected: true });
+    } catch (e) {
+      return json({ events: [], error: e.message, connected: true }, 200);
+    }
+  }
+
+  return json({ error: 'action required: auth|callback|status|today|tomorrow|week|next-week' }, 400);
 }
