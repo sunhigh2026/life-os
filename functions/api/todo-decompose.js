@@ -88,10 +88,18 @@ ${taskInfo}
 
     const data = await res.json();
 
-    // Gemini 2.5 Flash: textパートを全て結合して取得（thoughtパートを除外）
+    // Gemini 2.5 Flash: partsからテキストを取得
+    // thoughtパートは thought: true フラグを持つ（混在するとパース失敗の原因）
     const parts = data.candidates?.[0]?.content?.parts || [];
-    const textParts = parts.filter(p => p.text && !p.thought).map(p => p.text);
-    const responseText = textParts.join('') || parts.map(p => p.text || '').join('');
+
+    // 全パートのテキストを連結（まず非thoughtを優先、なければ全部）
+    let responseText = '';
+    const nonThoughtParts = parts.filter(p => p.text !== undefined && p.thought !== true);
+    if (nonThoughtParts.length > 0) {
+      responseText = nonThoughtParts.map(p => p.text).join('');
+    } else {
+      responseText = parts.map(p => p.text || '').join('');
+    }
 
     if (!responseText) {
       return json({
@@ -100,30 +108,33 @@ ${taskInfo}
           { text: `${text}の具体的な段取りを書き出す`, due: null },
         ],
         comment: 'AIの返答が空だったよ〜',
-        _debug: 'empty_response',
+        _debug: `empty_response_parts_${parts.length}`,
       });
     }
 
-    // JSON部分を抽出（```json ... ``` のコードブロックも対応）
-    let jsonStr = null;
-    const codeBlockMatch = responseText.match(/```(?:json)?\s*([\s\S]*?)```/);
+    // JSON部分を抽出 — 複数の方法で試す
+    let parsed = null;
+
+    // 方法1: ```json ... ``` コードブロック（貪欲マッチでも試す）
+    const codeBlockMatch = responseText.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
     if (codeBlockMatch) {
-      jsonStr = codeBlockMatch[1].trim();
-    } else {
-      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        jsonStr = jsonMatch[0];
+      try { parsed = JSON.parse(codeBlockMatch[1].trim()); } catch (_) {}
+    }
+
+    // 方法2: 最も外側の { ... } を取得
+    if (!parsed) {
+      const braceStart = responseText.indexOf('{');
+      const braceEnd = responseText.lastIndexOf('}');
+      if (braceStart !== -1 && braceEnd > braceStart) {
+        try { parsed = JSON.parse(responseText.slice(braceStart, braceEnd + 1)); } catch (_) {}
       }
     }
 
-    if (jsonStr) {
-      const parsed = JSON.parse(jsonStr);
-      if (parsed.subtasks && parsed.subtasks.length > 0) {
-        return json({
-          subtasks: parsed.subtasks,
-          comment: parsed.comment || '一歩ずつやっていこ〜！',
-        });
-      }
+    if (parsed && parsed.subtasks && parsed.subtasks.length > 0) {
+      return json({
+        subtasks: parsed.subtasks,
+        comment: parsed.comment || '一歩ずつやっていこ〜！',
+      });
     }
 
     // JSONパース失敗 → デバッグ情報付きフォールバック
@@ -134,7 +145,7 @@ ${taskInfo}
       ],
       comment: 'AIの返答を解析できなかったよ〜',
       _debug: 'parse_fail',
-      _raw: responseText.slice(0, 200),
+      _raw: responseText.slice(0, 300),
     });
   } catch (e) {
     return json({
