@@ -90,6 +90,7 @@ export async function onRequestGet({ env }) {
     recentDone,
     streakData,
     summary: {
+      todayEntryCount: todayEntries.length,   // ← これが抜けていてバグの原因だった
       openCount: openTodos.length,
       todayDoneCount,
       overdueCount,
