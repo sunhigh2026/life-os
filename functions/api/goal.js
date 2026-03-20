@@ -59,9 +59,19 @@ async function computeProgress(db, goal) {
     current = Math.round(row?.avg_steps || 0);
   } else if (goal.unit === '回') {
     const row = await db.prepare(
-      `SELECT COUNT(*) as cnt FROM entries WHERE tag = ? AND datetime BETWEEN ? AND ?`
-    ).bind(goal.goal, period.start, period.end + 'T23:59:59').first();
+      `SELECT COUNT(*) as cnt FROM entries WHERE datetime BETWEEN ? AND ?`
+    ).bind(period.start, period.end + 'T23:59:59').first();
     current = row?.cnt || 0;
+  } else if (goal.unit === '分') {
+    const row = await db.prepare(
+      `SELECT AVG(active_minutes) as v FROM fitness WHERE date BETWEEN ? AND ?`
+    ).bind(period.start, period.end).first();
+    current = Math.round(row?.v || 0);
+  } else if (goal.unit === 'kg') {
+    const row = await db.prepare(
+      `SELECT weight FROM fitness WHERE weight IS NOT NULL ORDER BY date DESC LIMIT 1`
+    ).first();
+    current = row?.weight || 0;
   } else {
     return { current: 0, progress: 0 };
   }
@@ -92,11 +102,13 @@ export async function onRequestGet(context) {
     // Compute progress for each active goal
     const goalsWithProgress = await Promise.all(
       results.map(async (goal) => {
-        if (goal.status === 'active' && goal.target) {
-          const { current, progress } = await computeProgress(db, goal);
-          return { ...goal, current, progress };
-        }
-        return { ...goal, current: 0, progress: 0 };
+        try {
+          if (goal.status === 'active' && goal.target && goal.freq) {
+            const { current, progress } = await computeProgress(db, goal);
+            return { ...goal, current, progress };
+          }
+        } catch (_) {}
+        return { ...goal, current: null, progress: null };
       })
     );
 
