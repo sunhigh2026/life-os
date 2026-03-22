@@ -11,10 +11,24 @@ export async function onRequestGet({ request }) {
   const q = url.searchParams.get('q');
   if (!q) return json({ error: 'q parameter required' }, 400);
 
-  const isIsbn = /^[0-9\-]{9,17}$/.test(q.replace(/\s/g, ''));
+  const cleaned = q.replace(/[\-\s]/g, '');
+  const isIsbn13 = /^(978|979)\d{10}$/.test(cleaned);
+  const isIsbn10 = /^\d{9}[\dXx]$/.test(cleaned);
+  const isIsbn = isIsbn13 || isIsbn10;
+  // 書籍JANコード2段目（192:書籍価格, 191:雑誌）や、ISBN以外の13桁バーコード全般を検出
+  const is13Digits = /^\d{13}$/.test(cleaned);
+  const isNonIsbnBarcode = is13Digits && !isIsbn13;
+
+  if (isNonIsbnBarcode) {
+    // 書籍JANコード2段目（価格コード）→ 上のバーコードを案内
+    return json({
+      books: [],
+      hint: 'これはISBNバーコードではないみたい📖 上のバーコード（978で始まる方）を読み取ってね！',
+    });
+  }
 
   if (isIsbn) {
-    return searchByIsbn(q.replace(/[\-\s]/g, ''));
+    return searchByIsbn(cleaned);
   } else {
     return searchByTitle(q);
   }

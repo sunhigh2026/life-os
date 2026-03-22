@@ -64,10 +64,15 @@ function appendMessage(role, text, isTemp = false) {
   const el = document.createElement('div');
   el.className = `message ${role}`;
   el.id = id;
-  el.textContent = text;
+  // innerHTML で改行を <br> に変換（XSS防止のためエスケープ後）
+  el.innerHTML = escHtml(text).replace(/\n/g, '<br>');
   if (isTemp) el.style.opacity = '0.5';
   document.getElementById('chatMessages').appendChild(el);
   return id;
+}
+
+function escHtml(str) {
+  return (str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 function removeMessage(id) {

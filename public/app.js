@@ -752,41 +752,112 @@ async function loadMenstrualStats() {
 // ==============================
 async function loadCalendar() {
   const section = document.getElementById('sectionCalendar');
-  const el = document.getElementById('calendarList');
+  const slider = document.getElementById('weekSlider');
   const countEl = document.getElementById('calendarCount');
   try {
-    const data = await apiFetch('/api/calendar?action=today');
+    const data = await apiFetch('/api/calendar?action=week');
     if (!data.connected) {
-      // 未連携: 連携ボタンを表示
       section.style.display = '';
-      el.innerHTML = `<div class="empty-msg">
+      document.getElementById('weekNav').innerHTML = '';
+      slider.innerHTML = `<div class="empty-msg" style="min-width:100%;padding:16px;">
         <button class="btn-submit" onclick="connectCalendar()" style="width:auto;padding:8px 20px;font-size:13px;">📅 Googleカレンダーを連携</button>
       </div>`;
       countEl.textContent = '';
       return;
     }
-    if (!data.events.length) {
-      section.style.display = '';
-      el.innerHTML = '<div class="empty-msg">今日の予定はありません</div>';
-      countEl.textContent = '';
-      return;
-    }
     section.style.display = '';
-    countEl.textContent = `${data.events.length}件`;
-    el.innerHTML = data.events.map(ev => {
-      const time = ev.allDay ? '終日' : formatEventTime(ev.start, ev.end);
-      return `<div class="entry-item">
-        <div class="entry-time">${time}</div>
-        <div class="entry-content">
-          <div class="entry-text">${escHtml(ev.summary)}</div>
-          ${ev.location ? `<div class="entry-tag">📍 ${escHtml(ev.location)}</div>` : ''}
-        </div>
-      </div>`;
-    }).join('');
+    renderWeekSlider(data.events);
   } catch (e) {
-    // カレンダーAPI未設定 → 非表示のまま
     section.style.display = 'none';
   }
+}
+
+function renderWeekSlider(events) {
+  const slider = document.getElementById('weekSlider');
+  const nav = document.getElementById('weekNav');
+  const countEl = document.getElementById('calendarCount');
+
+  const WEEKDAYS = ['日','月','火','水','木','金','土'];
+  const now = new Date();
+  const todayStr = new Date(now - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+
+  // イベントを日付でグループ化
+  const byDate = {};
+  events.forEach(ev => {
+    const dateKey = (ev.start || '').slice(0, 10);
+    if (!byDate[dateKey]) byDate[dateKey] = [];
+    byDate[dateKey].push(ev);
+  });
+
+  countEl.textContent = events.length ? `${events.length}件` : '';
+
+  let navHtml = '';
+  let sliderHtml = '';
+
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(now);
+    d.setDate(d.getDate() + i);
+    const dateStr = new Date(d - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+    const wd = WEEKDAYS[d.getDay()];
+    const day = d.getDate();
+    const isToday = dateStr === todayStr;
+    const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+    const dayEvents = byDate[dateStr] || [];
+
+    // ナビ項目
+    const navClasses = ['week-nav-item'];
+    if (isToday) navClasses.push('today', 'active');
+    if (isWeekend) navClasses.push('weekend');
+    navHtml += `<div class="${navClasses.join(' ')}" data-index="${i}" onclick="scrollToWeekDay(${i})">
+      <div>${wd}</div><div style="font-size:10px;">${day}</div>
+    </div>`;
+
+    // デイカード
+    let eventsHtml;
+    if (dayEvents.length === 0) {
+      eventsHtml = '<div class="week-day-empty">予定なし</div>';
+    } else {
+      eventsHtml = dayEvents.map(ev => {
+        const time = ev.allDay ? '終日' : formatEventTime(ev.start, ev.end);
+        return `<div class="week-event-item">
+          <span class="week-event-time">${time}</span>
+          <div>
+            <div class="week-event-title">${escHtml(ev.summary)}</div>
+            ${ev.location ? `<div class="week-event-location">📍 ${escHtml(ev.location)}</div>` : ''}
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    sliderHtml += `<div class="week-day-card" data-index="${i}">
+      <div class="week-day-header">
+        <span class="week-day-name">${wd}</span>
+        <span class="week-day-date">${d.getMonth() + 1}/${day}</span>
+        ${isToday ? '<span class="week-day-badge">今日</span>' : ''}
+      </div>
+      <div class="week-day-events">${eventsHtml}</div>
+    </div>`;
+  }
+
+  nav.innerHTML = navHtml;
+  slider.innerHTML = sliderHtml;
+
+  // スクロールリスナー（重複防止）
+  slider.removeEventListener('scroll', onWeekSliderScroll);
+  slider.addEventListener('scroll', onWeekSliderScroll);
+}
+
+function scrollToWeekDay(index) {
+  const slider = document.getElementById('weekSlider');
+  slider.scrollTo({ left: index * slider.offsetWidth, behavior: 'smooth' });
+}
+
+function onWeekSliderScroll() {
+  const slider = document.getElementById('weekSlider');
+  const index = Math.round(slider.scrollLeft / slider.offsetWidth);
+  document.querySelectorAll('.week-nav-item').forEach((el, i) => {
+    el.classList.toggle('active', i === index);
+  });
 }
 
 function formatEventTime(start, end) {

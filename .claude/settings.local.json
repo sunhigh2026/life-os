@@ -63,7 +63,32 @@
       "Bash(for f:*)",
       "Bash(do sed:*)",
       "Bash(done)",
-      "Bash(grep -l \"F5FBF8\" *.html)"
+      "Bash(grep -l \"F5FBF8\" *.html)",
+      "Bash(npm run:*)",
+      "Bash(cmd.exe /c \"npm run deploy\")",
+      "Bash(powershell.exe -Command \"Set-Location ''C:\\\\Users\\\\ocura\\\\Documents\\\\Dev\\\\life-os''; npm run deploy\")",
+      "Bash(powershell.exe -Command \"& ''C:\\\\Users\\\\ocura\\\\AppData\\\\Roaming\\\\npm\\\\npm.cmd'' run deploy\")",
+      "Bash(powershell.exe -Command \"ls ''C:\\\\Users\\\\ocura\\\\AppData\\\\Roaming\\\\npm''\")",
+      "Bash(powershell.exe -Command \"[System.Environment]::GetEnvironmentVariable\\(''NVM_HOME'', ''Machine''\\); [System.Environment]::GetEnvironmentVariable\\(''NVM_SYMLINK'', ''Machine''\\)\")",
+      "Bash(powershell.exe -Command \"& ''C:\\\\nvm4w\\\\nodejs\\\\npm.cmd'' --version\")",
+      "Bash(powershell.exe -Command \"Set-Location ''C:\\\\Users\\\\ocura\\\\Documents\\\\Dev\\\\life-os''; & ''C:\\\\nvm4w\\\\nodejs\\\\npm.cmd'' run deploy\")",
+      "Bash(powershell.exe -Command \"& ''C:\\\\nvm4w\\\\nodejs\\\\npx.cmd'' wrangler --version\")",
+      "Bash(powershell.exe -Command \"ls ''C:\\\\nvm4w\\\\nodejs''\")",
+      "Bash(powershell.exe -Command \"ls ''C:\\\\Users\\\\ocura\\\\Documents\\\\Dev\\\\life-os\\\\node_modules\\\\.bin\\\\wrangler*''\")",
+      "Bash(powershell.exe -Command \"Set-Location ''C:\\\\Users\\\\ocura\\\\Documents\\\\Dev\\\\life-os''; $env:PATH = ''C:\\\\nvm4w\\\\nodejs'' + [System.IO.Path]::PathSeparator + $env:PATH; npm install 2>&1 | Select-Object -Last 5\")",
+      "Bash(powershell.exe -Command \"& { Set-Location ''C:\\\\Users\\\\ocura\\\\Documents\\\\Dev\\\\life-os''; $env:PATH = ''C:\\\\nvm4w\\\\nodejs'' + [System.IO.Path]::PathSeparator + $env:PATH; & ''C:\\\\nvm4w\\\\nodejs\\\\npm.cmd'' install 2>&1 | Select-Object -Last 5 }\")",
+      "Bash(powershell.exe -Command \"Test-Path ''C:\\\\nvm4w\\\\nodejs\\\\node.exe''\")",
+      "Bash(cmd.exe /c \"C:\\\\Users\\\\ocura\\\\Documents\\\\Dev\\\\life-os\\\\deploy.bat\")",
+      "Bash(powershell.exe -File \"C:\\\\Users\\\\ocura\\\\Documents\\\\Dev\\\\life-os\\\\deploy.bat\")",
+      "Bash(cmd.exe /k \"C:\\\\Users\\\\ocura\\\\Documents\\\\Dev\\\\life-os\\\\deploy.bat && exit\")",
+      "Bash(cmd.exe /c \"set PATH=C:\\\\nvm4w\\\\nodejs;%PATH% && cd /d C:\\\\Users\\\\ocura\\\\Documents\\\\Dev\\\\life-os && node --version && npm --version\")",
+      "Bash(cmd.exe /c \"set PATH=C:\\\\nvm4w\\\\nodejs;%PATH% && node --version > C:\\\\Users\\\\ocura\\\\Documents\\\\Dev\\\\life-os\\\\out.txt 2>&1\")",
+      "Bash(npm --version)",
+      "Read(//usr/local/**)",
+      "Read(//usr/**)",
+      "Bash(nvm use:*)",
+      "Bash(export PATH=\"/c/nvm4w/nodejs:$PATH\")",
+      "Bash(npm install:*)"
     ]
   }
 }

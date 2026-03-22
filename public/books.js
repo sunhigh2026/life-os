@@ -49,6 +49,10 @@ async function searchBooks() {
 
   try {
     const data = await apiFetch(`/api/book-search?q=${encodeURIComponent(q)}`);
+    if (data.hint) {
+      showPiaToast(data.hint);
+      return;
+    }
     renderSearchResults(data.books);
   } catch (e) {
     showToast(`検索エラー: ${e.message}`);

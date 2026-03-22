@@ -3,8 +3,8 @@
   "configurations": [
     {
       "name": "life-os",
-      "runtimeExecutable": "npx",
-      "runtimeArgs": ["wrangler", "pages", "dev", "public", "--compatibility-date=2024-01-01"],
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": ["/c", "npx", "wrangler", "pages", "dev", "public", "--compatibility-date=2024-01-01"],
       "port": 8788
     }
   ]

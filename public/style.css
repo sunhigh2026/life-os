@@ -985,3 +985,116 @@ input[type="datetime-local"] { flex: 1; }
   flex-direction: column;
   gap: 10px;
 }
+
+/* ===== Week Calendar Slider ===== */
+.week-nav {
+  display: flex;
+  justify-content: space-around;
+  padding: 10px 12px 6px;
+}
+.week-nav-item {
+  font-size: 11px;
+  color: var(--text-sub);
+  text-align: center;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: var(--radius-chip);
+  transition: background 0.15s, color 0.15s;
+  line-height: 1.4;
+}
+.week-nav-item:active { transform: scale(0.95); }
+.week-nav-item.active {
+  background: var(--primary);
+  color: var(--primary-on);
+  font-weight: 600;
+}
+.week-nav-item.today { font-weight: 700; }
+.week-nav-item.weekend { color: var(--accent-red); }
+.week-nav-item.weekend.active { color: var(--primary-on); }
+
+.week-slider {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+.week-slider::-webkit-scrollbar { display: none; }
+
+.week-day-card {
+  min-width: 100%;
+  scroll-snap-align: start;
+  padding: 12px 16px 16px;
+  box-sizing: border-box;
+}
+.week-day-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.week-day-name {
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--text-main);
+}
+.week-day-date {
+  font-size: 13px;
+  color: var(--text-sub);
+}
+.week-day-badge {
+  font-size: 10px;
+  background: var(--primary);
+  color: var(--primary-on);
+  padding: 2px 8px;
+  border-radius: var(--radius-chip);
+  font-weight: 600;
+}
+.week-event-item {
+  display: flex;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  align-items: flex-start;
+}
+.week-event-item:last-child { border-bottom: none; }
+.week-event-time {
+  font-size: 11px;
+  color: var(--text-sub);
+  white-space: nowrap;
+  min-width: 52px;
+  padding-top: 2px;
+}
+.week-event-title {
+  font-size: 14px;
+  color: var(--text-main);
+  line-height: 1.5;
+}
+.week-event-location {
+  font-size: 11px;
+  color: var(--text-sub);
+  margin-top: 2px;
+}
+.week-day-empty {
+  color: var(--text-sub);
+  font-size: 13px;
+  text-align: center;
+  padding: 24px 0;
+}
+
+/* ===== X Share Button ===== */
+.share-x-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #f5f5f5;
+  cursor: pointer;
+  color: #000;
+  transition: background 0.15s, color 0.15s;
+}
+.share-x-btn:hover { background: #000; color: #fff; }

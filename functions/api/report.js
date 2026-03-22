@@ -42,11 +42,13 @@ async function gatherWeeklyData(db, from, to) {
     db.prepare(
       `SELECT text, done_at FROM todos WHERE status = 'done' AND done_at >= ? AND done_at < ? ORDER BY done_at`
     ).bind(from, to).all(),
+    // 今週中に終わらせるべきだったのに残ったもの（期限が今週以前のopen todo）
     db.prepare(
-      `SELECT text, due FROM todos WHERE status != 'done' ORDER BY due ASC NULLS LAST LIMIT 50`
-    ).all(),
+      `SELECT text, due FROM todos WHERE status != 'done' AND due IS NOT NULL AND due < ? ORDER BY due ASC LIMIT 50`
+    ).bind(to).all(),
+    // 読了した本のみ（status = 'done'）
     db.prepare(
-      `SELECT title, author, cover_url, rating, note, status FROM books WHERE datetime >= ? AND datetime < ?`
+      `SELECT title, author, cover_url, rating, note, status FROM books WHERE status = 'done' AND datetime >= ? AND datetime < ?`
     ).bind(from, to).all(),
     db.prepare(
       `SELECT date, steps, active_minutes FROM fitness WHERE date >= ? AND date < ? ORDER BY date`
@@ -66,9 +68,11 @@ async function gatherLastWeekStats(db, from) {
   const lFrom = formatDate(new Date(new Date(from + 'T00:00:00Z').getTime() - 7 * 86400000));
   const lTo = from;
   const [entries, done, books, fit] = await Promise.all([
-    db.prepare(`SELECT COUNT(*) as c, AVG(mood) as m FROM entries WHERE datetime >= ? AND datetime < ?`).bind(lFrom, lTo).first(),
+    // mood IS NOT NULL AND mood > 0 のエントリだけで平均を出す
+    db.prepare(`SELECT COUNT(*) as c, AVG(mood) as m FROM entries WHERE datetime >= ? AND datetime < ? AND mood IS NOT NULL AND mood > 0`).bind(lFrom, lTo).first(),
     db.prepare(`SELECT COUNT(*) as c FROM todos WHERE status = 'done' AND done_at >= ? AND done_at < ?`).bind(lFrom, lTo).first(),
-    db.prepare(`SELECT COUNT(*) as c FROM books WHERE datetime >= ? AND datetime < ?`).bind(lFrom, lTo).first(),
+    // 読了した本のみ
+    db.prepare(`SELECT COUNT(*) as c FROM books WHERE status = 'done' AND datetime >= ? AND datetime < ?`).bind(lFrom, lTo).first(),
     db.prepare(`SELECT AVG(steps) as s FROM fitness WHERE date >= ? AND date < ?`).bind(lFrom, lTo).first(),
   ]);
   return {
@@ -235,7 +239,10 @@ function buildMoodByDay(entries, from) {
   const byDate = {};
   entries.forEach(e => {
     const d = (e.datetime || '').slice(0, 10);
-    if (d) { if (!byDate[d]) byDate[d] = []; byDate[d].push(e.mood || 0); }
+    if (d && e.mood && e.mood > 0) {
+      if (!byDate[d]) byDate[d] = [];
+      byDate[d].push(e.mood);
+    }
   });
   const moodEmoji = m => ['', '😢', '😞', '😐', '🙂', '😊', '🤩'][Math.round(m)] || '➖';
   return Array.from({ length: 7 }, (_, i) => {
@@ -397,9 +404,10 @@ export async function onRequestGet(context) {
       if (token) nextWeekEvents = await fetchCalendarEvents(token, nextFrom, nextTo);
     } catch (_) {}
 
-    // 集計
-    const avgMood = weekData.entries.length
-      ? Math.round((weekData.entries.reduce((s, e) => s + (e.mood || 0), 0) / weekData.entries.length) * 10) / 10
+    // 集計（moodはnull/0を除外して平均を出す）
+    const moodEntries = weekData.entries.filter(e => e.mood && e.mood > 0);
+    const avgMood = moodEntries.length
+      ? Math.round((moodEntries.reduce((s, e) => s + e.mood, 0) / moodEntries.length) * 10) / 10
       : null;
     const avgSteps = weekData.fitnessPerDay.length
       ? Math.round(weekData.fitnessPerDay.reduce((s, f) => s + (f.steps || 0), 0) / weekData.fitnessPerDay.length)
@@ -426,13 +434,17 @@ export async function onRequestGet(context) {
       console.error('Gemini error:', e.message);
     }
 
-    // メール送信
-    const emailHtml = buildEmailHtml(weekData, stats, piaComment, lastWeek, periodLabel);
-    const emailSent = await sendEmail(env, `🐾 ピアちゃんの週次レポート（${periodLabel}）`, emailHtml);
+    // メール用HTML生成（Resend設定があれば送信、なければGAS側で送る用にHTMLを返す）
+    const emailHtml    = buildEmailHtml(weekData, stats, piaComment, lastWeek, periodLabel);
+    const emailSubject = `🐾 ピアちゃんの週次レポート（${periodLabel}）`;
+    const emailSent    = await sendEmail(env, emailSubject, emailHtml);
 
     return json({
       period: { from, to: lastDayOfWeek },
       periodLabel,
+      emailSubject,
+      emailHtml,   // GAS の GmailApp.sendEmail() で使う
+      emailSent,
       stats,
       lastWeek,
       weekData: {
@@ -445,7 +457,6 @@ export async function onRequestGet(context) {
       nextWeekEvents,
       nextWeekTodos,
       piaComment,
-      emailSent,
     });
   } catch (e) {
     return json({ error: e.message }, 500);
