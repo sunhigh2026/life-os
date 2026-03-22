@@ -88,7 +88,26 @@
       "Read(//usr/**)",
       "Bash(nvm use:*)",
       "Bash(export PATH=\"/c/nvm4w/nodejs:$PATH\")",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(curl -s -H \"Authorization: Bearer hidapia2026\" \"https://lifeos.hidapia.com/api/calendar?action=status\")",
+      "Bash(curl -s -H \"Authorization: Bearer hidapia2026\" \"https://lifeos.hidapia.com/api/calendar?action=today\")",
+      "Bash(curl -s -H \"Authorization: Bearer hidapia2026\" \"https://lifeos.hidapia.com/api/calendar?action=week\")",
+      "Bash(ls -la /c/Users/ocura/Documents/Dev/project-os/functions/api/github/[projectId]/)",
+      "Bash(find C:UsersocuraDocuments -type f -name *.md -o -name *.txt)",
+      "Bash(xargs grep:*)",
+      "Bash(find 'C:\\\\Users\\\\ocura\\\\Documents\\\\Obsidian Vault' -type f -name *.md)",
+      "Bash(grep -r 未経験 'C:\\\\Users\\\\ocura\\\\Documents\\\\Obsidian Vault' --include=*.md)",
+      "Bash(find C:UsersocuraDocuments -type f -name *.md)",
+      "Bash(while read:*)",
+      "Bash(do grep:*)",
+      "Bash(echo \"$f\")",
+      "Bash(ls -la *.md)",
+      "Bash(find /c/Users/ocura/Documents -type f \\\\\\(-iname *.html -o -iname *.md -o -iname *.txt \\\\\\) -print0)",
+      "Bash(xargs -0 grep -l \"プログラミング.*AI.*作れ\\\\|AI.*プログラミング.*未経験\")",
+      "WebSearch",
+      "WebFetch(domain:discuss.ai.google.dev)",
+      "Bash(find /c/Users/ocura/Documents/Dev/life-os -type f -name *.sql -o -name *.toml -o -name schema*)",
+      "Bash(grep -r import.*book /c/Users/ocura/Documents/Dev/life-os --include=*.js --include=*.html)"
     ]
   }
 }

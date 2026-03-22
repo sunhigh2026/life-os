@@ -300,7 +300,7 @@ function shareToX(entry) {
   const tag = entry.tag ? `【${entry.tag}】` : '';
   const body = (entry.text || '').length > 100 ? entry.text.slice(0, 100) + '…' : (entry.text || '');
   const text = `${mood} ${tag}${body}\n#LifeOS日記`;
-  const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
+  const url = `https://x.com/intent/post?text=${encodeURIComponent(text)}`;
   window.open(url, '_blank');
 }
 
