@@ -30,17 +30,11 @@ export async function onRequestPost({ request, env }) {
     return json({ error: 'No records found' }, 400);
   }
 
-  // 既存Audibleデータを全削除（差し替え方式）
-  const { results: existingRows } = await env.DB.prepare(
-    `SELECT COUNT(*) as cnt FROM books WHERE medium = 'Audible' OR medium = 'audible'`
+  // 既存ASIN/ISBNを取得（差分インポート用：重複スキップ）
+  const { results: existing } = await env.DB.prepare(
+    `SELECT isbn FROM books WHERE isbn IS NOT NULL AND isbn != ''`
   ).all();
-  const deletedCount = existingRows[0]?.cnt || 0;
-  await env.DB.prepare(
-    `DELETE FROM books WHERE medium = 'Audible' OR medium = 'audible'`
-  ).run();
-
-  // 新規インポート用のISBNセット（重複チェック）
-  const importedIsbns = new Set();
+  const existingIsbns = new Set(existing.map(r => r.isbn));
 
   let imported = 0;
   let skipped = 0;
@@ -64,14 +58,14 @@ export async function onRequestPost({ request, env }) {
 
     if (!title) { skipped++; continue; }
 
-    // ASIN重複チェック（同一CSV内）
-    if (isbn && importedIsbns.has(isbn)) {
+    // ASIN重複チェック（既存DB＋同一CSV内）
+    if (isbn && existingIsbns.has(isbn)) {
       skipped++;
       continue;
     }
 
     // ステータス判定
-    let status = 'wish';
+    let status = 'want';
     if (progress === '既読') {
       status = 'done';
     } else if (progress && /残り/.test(progress)) {
@@ -100,14 +94,14 @@ export async function onRequestPost({ request, env }) {
         coverUrl || null, status, rating, note
       ).run();
 
-      if (isbn) importedIsbns.add(isbn);
+      if (isbn) existingIsbns.add(isbn);
       imported++;
     } catch {
       skipped++;
     }
   }
 
-  return json({ imported, skipped, deleted: deletedCount, total: records.length });
+  return json({ imported, skipped, total: records.length });
 }
 
 function parseCsv(text) {

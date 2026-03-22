@@ -220,7 +220,7 @@
   <!-- Audibleインポート -->
   <div class="settings-section">
     <h3>🎧 Audibleインポート</h3>
-    <p style="font-size:12px;color:var(--muted);margin:0 0 8px;">Chrome拡張「Audible Library Extractor」のCSVをインポート<br>※既存のAudibleデータを削除して再インポートします（差し替え方式）</p>
+    <p style="font-size:12px;color:var(--muted);margin:0 0 8px;">Chrome拡張「Audible Library Extractor」のCSVをインポート<br>※既にインポート済みの本はスキップされます（差分インポート）</p>
     <div class="import-area" onclick="document.getElementById('audibleFile').click()">
       📂 Audible CSVを選択してインポート
     </div>
@@ -360,28 +360,9 @@ async function importAudible(input) {
   if (!file) return;
   const el = document.getElementById('audibleResult');
 
-  // 既存Audibleデータ件数を取得して確認ダイアログ
-  try {
-    const countRes = await fetch('/api/book?limit=1000&status=all', {
-      headers: { 'Authorization': `Bearer ${AUTH_KEY}` },
-    });
-    const countData = await countRes.json();
-    const audibleCount = (countData.books || []).filter(b =>
-      b.medium === 'Audible' || b.medium === 'audible'
-    ).length;
-
-    const msg = audibleCount > 0
-      ? `既存のAudibleデータ（${audibleCount}件）を削除して再インポートします。よろしいですか？`
-      : 'Audibleデータをインポートします。よろしいですか？';
-    if (!confirm(msg)) {
-      input.value = '';
-      return;
-    }
-  } catch {
-    if (!confirm('Audibleデータをインポートします。よろしいですか？')) {
-      input.value = '';
-      return;
-    }
+  if (!confirm('Audibleデータをインポートします。既にインポート済みの本はスキップされます。よろしいですか？')) {
+    input.value = '';
+    return;
   }
 
   el.textContent = 'インポート中...';
@@ -394,7 +375,7 @@ async function importAudible(input) {
       body: text,
     });
     const data = await res.json();
-    el.textContent = `✅ ${data.imported}件インポート（${data.deleted || 0}件削除→再取込） / ${data.skipped}件スキップ`;
+    el.textContent = `✅ ${data.imported}件インポート / ${data.skipped}件スキップ（重複除外）`;
   } catch (e) {
     el.textContent = `❌ エラー: ${e.message}`;
   }
