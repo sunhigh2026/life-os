@@ -27,11 +27,39 @@ export async function onRequestGet({ request, env }) {
   }
 
   const status = url.searchParams.get('status'); // want / reading / done / null=all
-  const query = status && status !== 'all'
-    ? `SELECT * FROM books WHERE status = ? ORDER BY datetime DESC LIMIT ?`
-    : `SELECT * FROM books ORDER BY datetime DESC LIMIT ?`;
-  const binds = status && status !== 'all' ? [status, limit] : [limit];
+  const medium = url.searchParams.get('medium'); // owned / library / kindle / audible / other
+  const sort = url.searchParams.get('sort') || 'datetime_desc'; // datetime_desc / datetime_asc / end_date / title
+  const search = url.searchParams.get('search');
 
+  const conditions = [];
+  const binds = [];
+
+  if (status && status !== 'all') {
+    conditions.push('status = ?');
+    binds.push(status);
+  }
+  if (medium && medium !== 'all') {
+    conditions.push('(medium = ? OR LOWER(medium) = LOWER(?))');
+    binds.push(medium, medium);
+  }
+  if (search) {
+    conditions.push('(title LIKE ? OR author LIKE ? OR note LIKE ?)');
+    const like = `%${search}%`;
+    binds.push(like, like, like);
+  }
+
+  const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+
+  const orderMap = {
+    datetime_desc: 'datetime DESC',
+    datetime_asc: 'datetime ASC',
+    end_date: 'end_date DESC, datetime DESC',
+    title: 'title COLLATE NOCASE ASC',
+  };
+  const order = orderMap[sort] || 'datetime DESC';
+
+  binds.push(limit);
+  const query = `SELECT * FROM books ${where} ORDER BY ${order} LIMIT ?`;
   const { results } = await env.DB.prepare(query).bind(...binds).all();
   return json({ books: results });
 }

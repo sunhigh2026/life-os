@@ -81,6 +81,12 @@ CREATE TABLE IF NOT EXISTS fitness (
   created_at TEXT DEFAULT (datetime('now'))
 );
 
+-- インポート履歴（削除済みASINの再取込防止）
+CREATE TABLE IF NOT EXISTS book_import_log (
+  asin TEXT PRIMARY KEY,
+  imported_at TEXT DEFAULT (datetime('now'))
+);
+
 -- インデックス
 CREATE INDEX IF NOT EXISTS idx_entries_datetime ON entries(datetime);
 CREATE INDEX IF NOT EXISTS idx_todos_status ON todos(status);

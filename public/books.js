@@ -14,6 +14,8 @@ let html5Qr = null;
 let noteRecognition = null;
 let isNoteRecording = false;
 let currentBookFilter = 'all';
+let currentMediumFilter = 'all';
+let searchTimer = null;
 let editRating = 0;
 
 // ==============================
@@ -163,17 +165,29 @@ function cancelRegister() {
 }
 
 function selectMedium(m) {
-  selectedMedium = m;
-  document.querySelectorAll('[data-medium]').forEach((btn) => {
-    btn.classList.toggle('selected', btn.dataset.medium === m);
-  });
+  // トグル：同じものをクリックしたら解除
+  if (selectedMedium === m) {
+    selectedMedium = '';
+    document.querySelectorAll('[data-medium]').forEach((btn) => btn.classList.remove('selected'));
+  } else {
+    selectedMedium = m;
+    document.querySelectorAll('[data-medium]').forEach((btn) => {
+      btn.classList.toggle('selected', btn.dataset.medium === m);
+    });
+  }
 }
 
 function selectStatus(s) {
-  selectedStatus = s;
-  document.querySelectorAll('[data-status]').forEach((btn) => {
-    btn.classList.toggle('selected', btn.dataset.status === s);
-  });
+  // トグル：同じものをクリックしたら解除
+  if (selectedStatus === s) {
+    selectedStatus = '';
+    document.querySelectorAll('[data-status]').forEach((btn) => btn.classList.remove('selected'));
+  } else {
+    selectedStatus = s;
+    document.querySelectorAll('[data-status]').forEach((btn) => {
+      btn.classList.toggle('selected', btn.dataset.status === s);
+    });
+  }
 }
 
 function selectStar(n) {
@@ -240,13 +254,31 @@ function setBookFilter(status) {
   loadRecentBooks();
 }
 
+function setMediumFilter(medium) {
+  currentMediumFilter = medium;
+  document.querySelectorAll('#mediumFilterTabs .filter-tab').forEach(b => b.classList.remove('active'));
+  document.getElementById(`medium-tab-${medium}`).classList.add('active');
+  loadRecentBooks();
+}
+
+function debounceSearch() {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => loadRecentBooks(), 300);
+}
+
 // ==============================
 // 読書一覧
 // ==============================
 async function loadRecentBooks() {
   try {
-    const param = currentBookFilter !== 'all' ? `&status=${currentBookFilter}` : '';
-    const data = await apiFetch(`/api/book?limit=100${param}`);
+    const params = new URLSearchParams({ limit: '500' });
+    if (currentBookFilter !== 'all') params.set('status', currentBookFilter);
+    if (currentMediumFilter !== 'all') params.set('medium', currentMediumFilter);
+    const sortEl = document.getElementById('bookSort');
+    if (sortEl) params.set('sort', sortEl.value);
+    const searchEl = document.getElementById('bookSearchInput');
+    if (searchEl && searchEl.value.trim()) params.set('search', searchEl.value.trim());
+    const data = await apiFetch(`/api/book?${params}`);
     renderRecentBooks(data.books);
   } catch {}
 }
@@ -270,6 +302,7 @@ function renderRecentBooks(books) {
     return;
   }
   const statusLabel = { want: '📌 読みたい', reading: '📖 読書中', done: '✅ 読了' };
+  const mediumLabel = { owned: '📖 蔵書', library: '🏛 図書館', kindle: '📱 Kindle', Audible: '🎧 Audible', audible: '🎧 Audible', other: 'その他' };
   el.innerHTML = books.map((b) => {
     const bd = encodeURIComponent(JSON.stringify(b));
     return `
@@ -281,8 +314,9 @@ function renderRecentBooks(books) {
           <div class="book-title">${escHtml(b.title || '（タイトルなし）')}</div>
           <div class="book-author">${escHtml(b.author || '')}</div>
           ${b.rating ? `<div class="stars">${'★'.repeat(b.rating)}${'☆'.repeat(5 - b.rating)}</div>` : ''}
-          <div style="display:flex;align-items:center;gap:8px;margin-top:4px;flex-wrap:wrap;">
+          <div style="display:flex;align-items:center;gap:6px;margin-top:4px;flex-wrap:wrap;">
             <span class="book-status-badge">${statusLabel[b.status] || b.status}</span>
+            ${b.medium ? `<span style="font-size:11px;color:var(--muted);">${mediumLabel[b.medium] || b.medium}</span>` : ''}
             ${b.tag ? `<span style="font-size:11px;color:var(--accent);">#${escHtml(b.tag)}</span>` : ''}
             ${b.end_date ? `<span style="font-size:11px;color:var(--muted);">読了: ${b.end_date}</span>` : ''}
             <button onclick="openBookEdit(decodeURIComponent('${bd}'))"

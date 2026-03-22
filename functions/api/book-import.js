@@ -30,11 +30,22 @@ export async function onRequestPost({ request, env }) {
     return json({ error: 'No records found' }, 400);
   }
 
-  // 既存ASIN/ISBNを取得（差分インポート用：重複スキップ）
+  // book_import_logテーブルを作成（なければ）
+  await env.DB.prepare(
+    `CREATE TABLE IF NOT EXISTS book_import_log (asin TEXT PRIMARY KEY, imported_at TEXT DEFAULT (datetime('now')))`
+  ).run();
+
+  // 既存ASIN/ISBN＋インポート履歴を取得（削除済みも含めて重複スキップ）
   const { results: existing } = await env.DB.prepare(
     `SELECT isbn FROM books WHERE isbn IS NOT NULL AND isbn != ''`
   ).all();
-  const existingIsbns = new Set(existing.map(r => r.isbn));
+  const { results: importLog } = await env.DB.prepare(
+    `SELECT asin FROM book_import_log`
+  ).all();
+  const existingIsbns = new Set([
+    ...existing.map(r => r.isbn),
+    ...importLog.map(r => r.asin),
+  ]);
 
   let imported = 0;
   let skipped = 0;
@@ -94,7 +105,13 @@ export async function onRequestPost({ request, env }) {
         coverUrl || null, status, rating, note
       ).run();
 
-      if (isbn) existingIsbns.add(isbn);
+      if (isbn) {
+        existingIsbns.add(isbn);
+        // インポート履歴に記録（削除後の再取込防止）
+        await env.DB.prepare(
+          `INSERT OR IGNORE INTO book_import_log (asin) VALUES (?)`
+        ).bind(isbn).run();
+      }
       imported++;
     } catch {
       skipped++;

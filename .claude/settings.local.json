@@ -107,7 +107,10 @@
       "WebSearch",
       "WebFetch(domain:discuss.ai.google.dev)",
       "Bash(find /c/Users/ocura/Documents/Dev/life-os -type f -name *.sql -o -name *.toml -o -name schema*)",
-      "Bash(grep -r import.*book /c/Users/ocura/Documents/Dev/life-os --include=*.js --include=*.html)"
+      "Bash(grep -r import.*book /c/Users/ocura/Documents/Dev/life-os --include=*.js --include=*.html)",
+      "Bash(node -c public/books.js)",
+      "Bash(node -c functions/api/book.js)",
+      "Bash(node -c functions/api/book-import.js)"
     ]
   }
 }
