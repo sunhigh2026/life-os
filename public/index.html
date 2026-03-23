@@ -63,7 +63,16 @@
 
     <!-- ToDo: 期限・優先度・分類 -->
     <div class="todo-options" id="todoOptions" style="display:none;">
-      <input type="date" id="dueDate" title="期限日">
+      <div style="display:flex;gap:6px;align-items:center;width:100%;">
+        <div style="flex:1;display:flex;align-items:center;gap:4px;">
+          <span style="font-size:11px;color:var(--muted);white-space:nowrap;">開始:</span>
+          <input type="date" id="startDate" title="開始日（この日まで非表示）" style="flex:1;">
+        </div>
+        <div style="flex:1;display:flex;align-items:center;gap:4px;">
+          <span style="font-size:11px;color:var(--muted);white-space:nowrap;">期限:</span>
+          <input type="date" id="dueDate" title="期限日" style="flex:1;">
+        </div>
+      </div>
       <div class="priority-btns">
         <button class="priority-btn" data-priority="high" onclick="selectPriority('high')">🔴 高</button>
         <button class="priority-btn selected" data-priority="mid" onclick="selectPriority('mid')">🟡 普通</button>
@@ -171,7 +180,11 @@
     <input type="text" id="todoEditText" placeholder="タスク内容">
     <input type="text" id="todoEditTag" placeholder="タグ（任意）">
     <div style="display:flex;gap:6px;align-items:center;">
-      <span style="font-size:12px;color:var(--muted);">期限:</span>
+      <span style="font-size:12px;color:var(--muted);white-space:nowrap;">開始:</span>
+      <input type="date" id="todoEditStartDate" style="flex:1;" title="この日まで「やること」に表示しない">
+    </div>
+    <div style="display:flex;gap:6px;align-items:center;">
+      <span style="font-size:12px;color:var(--muted);white-space:nowrap;">期限:</span>
       <input type="date" id="todoEditDue" style="flex:1;">
     </div>
     <div style="display:flex;gap:6px;">

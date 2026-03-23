@@ -339,42 +339,33 @@ function _sendReport(type) {
   }
 
   const data = JSON.parse(res.getContentText());
-  const subject = type === 'weekly'
-    ? `Life OS 週次レポート (${data.period.from} 〜 ${data.period.to})`
-    : `Life OS 年間レポート (${data.period.from} 〜 ${data.period.to})`;
 
-  // HTMLメールを構築
-  const stats = data.stats;
-  const comment = data.comment || '';
-  const moodEmoji = stats.avgMood ? (stats.avgMood >= 4 ? '😊' : stats.avgMood >= 3 ? '🙂' : '😐') : '➖';
+  // Resend で既に送信済みならスキップ
+  if (data.emailSent) {
+    Logger.log(`${type}レポートは Resend で送信済み`);
+    return;
+  }
 
-  const html = `
-<div style="max-width:560px;margin:20px auto;font-family:sans-serif;">
-  <div style="background:linear-gradient(135deg,#6366f1,#8b5cf6);padding:24px;border-radius:16px 16px 0 0;text-align:center;color:#fff;">
-    <div style="font-size:32px;">📊</div>
-    <h2 style="margin:8px 0 0;">${type === 'weekly' ? '週次レポート' : '年間レポート'}</h2>
-    <p style="margin:4px 0 0;opacity:0.85;font-size:13px;">${data.period.from} 〜 ${data.period.to}</p>
-  </div>
-  <div style="background:#fff;padding:20px;border:1px solid #e5e7eb;border-top:none;">
-    <table style="width:100%;border-collapse:collapse;font-size:14px;">
-      <tr><td style="padding:8px;">📝 記録数</td><td style="padding:8px;font-weight:bold;text-align:right;">${stats.entryCount}件</td></tr>
-      <tr style="background:#f9fafb;"><td style="padding:8px;">${moodEmoji} 平均気分</td><td style="padding:8px;font-weight:bold;text-align:right;">${stats.avgMood || '—'}/6</td></tr>
-      <tr><td style="padding:8px;">✅ タスク完了</td><td style="padding:8px;font-weight:bold;text-align:right;">${stats.todoCompleted}件</td></tr>
-      <tr style="background:#f9fafb;"><td style="padding:8px;">📋 残タスク</td><td style="padding:8px;font-weight:bold;text-align:right;">${stats.todoRemaining}件</td></tr>
-      <tr><td style="padding:8px;">⚠️ 期限切れ</td><td style="padding:8px;font-weight:bold;text-align:right;">${stats.todoOverdue}件</td></tr>
-      <tr style="background:#f9fafb;"><td style="padding:8px;">📚 読了</td><td style="padding:8px;font-weight:bold;text-align:right;">${stats.booksFinished}冊</td></tr>
-      <tr><td style="padding:8px;">🚶 平均歩数</td><td style="padding:8px;font-weight:bold;text-align:right;">${stats.avgSteps ? stats.avgSteps.toLocaleString() + '歩' : '—'}</td></tr>
-      <tr style="background:#f9fafb;"><td style="padding:8px;">⚖️ 平均体重</td><td style="padding:8px;font-weight:bold;text-align:right;">${stats.avgWeight ? stats.avgWeight + 'kg' : '—'}</td></tr>
-    </table>
-    <div style="background:#fef3c7;border-radius:12px;padding:16px;margin-top:16px;">
-      <div style="font-weight:bold;color:#92400e;margin-bottom:6px;">🧸 ピアちゃんのコメント</div>
-      <p style="margin:0;color:#78350f;line-height:1.7;font-size:14px;">${comment}</p>
-    </div>
-  </div>
-  <div style="text-align:center;padding:12px;color:#9ca3af;font-size:11px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 16px 16px;">
-    Life OS — あなたの毎日をサポート
-  </div>
-</div>`;
+  // API が生成した charset 付きリッチ HTML をそのまま使う（文字化け防止）
+  const subject = data.emailSubject
+    || `Life OS ${type === 'weekly' ? '週次' : '年間'}レポート (${data.period.from} 〜 ${data.period.to})`;
+  const html = data.emailHtml;
+
+  if (!html) {
+    // yearly 等 emailHtml が無い場合は簡易 HTML を生成
+    const stats = data.stats || {};
+    html = `<!DOCTYPE html><html><head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#F5FBF8;font-family:sans-serif;">
+<div style="max-width:560px;margin:20px auto;background:#fff;border-radius:16px;padding:24px;">
+  <h2 style="text-align:center;">Life OS ${type === 'yearly' ? '年間' : ''}レポート</h2>
+  <p style="text-align:center;color:#888;">${data.periodLabel || ''}</p>
+  <table style="width:100%;border-collapse:collapse;font-size:14px;">
+    <tr><td style="padding:8px;">記録数</td><td style="text-align:right;font-weight:bold;">${stats.entryCount || 0}件</td></tr>
+    <tr><td style="padding:8px;">ToDo完了</td><td style="text-align:right;font-weight:bold;">${stats.todoCompleted || 0}件</td></tr>
+    <tr><td style="padding:8px;">読了</td><td style="text-align:right;font-weight:bold;">${stats.booksFinished || 0}冊</td></tr>
+  </table>
+</div></body></html>`;
+  }
 
   MailApp.sendEmail({
     to: reportEmail,

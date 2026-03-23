@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS todos (
   done_at TEXT,
   category TEXT DEFAULT NULL,
   parent_id TEXT DEFAULT NULL,
+  start_date TEXT DEFAULT NULL,
   created_at TEXT DEFAULT (datetime('now'))
 );
 

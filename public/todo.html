@@ -67,7 +67,11 @@
     <input type="text" id="todoEditText" placeholder="タスク内容">
     <input type="text" id="todoEditTag" placeholder="タグ（任意）">
     <div style="display:flex;gap:6px;align-items:center;">
-      <span style="font-size:12px;color:var(--muted);">期限:</span>
+      <span style="font-size:12px;color:var(--muted);white-space:nowrap;">開始:</span>
+      <input type="date" id="todoEditStartDate" style="flex:1;" title="この日まで「やること」に表示しない">
+    </div>
+    <div style="display:flex;gap:6px;align-items:center;">
+      <span style="font-size:12px;color:var(--muted);white-space:nowrap;">期限:</span>
       <input type="date" id="todoEditDue" style="flex:1;">
     </div>
     <div style="display:flex;gap:6px;">
@@ -233,11 +237,13 @@ function render() {
   weekEnd.setDate(weekEnd.getDate() + (7 - weekEnd.getDay())); // 次の日曜
   const weekEndStr = weekEnd.toISOString().slice(0, 10);
 
-  // グループ分け
-  const overdue = open.filter(t => t.due && t.due < today);
-  const thisWeek = open.filter(t => t.due && t.due >= today && t.due <= weekEndStr && !overdue.includes(t));
-  const later = open.filter(t => t.due && t.due > weekEndStr);
-  const noDue = open.filter(t => !t.due);
+  // グループ分け（開始日が未来のものは「あとでやる」に分類）
+  const notYetStarted = open.filter(t => t.start_date && t.start_date > today);
+  const active = open.filter(t => !t.start_date || t.start_date <= today);
+  const overdue = active.filter(t => t.due && t.due < today);
+  const thisWeek = active.filter(t => t.due && t.due >= today && t.due <= weekEndStr && !overdue.includes(t));
+  const later = active.filter(t => t.due && t.due > weekEndStr);
+  const noDue = active.filter(t => !t.due);
 
   let html = '';
 
@@ -292,6 +298,12 @@ function render() {
     html += noDue.map(t => renderTodoItem(t, today, false, subtaskMap)).join('');
   }
 
+  // 開始日待ち
+  if (notYetStarted.length) {
+    html += `<div class="group-header">⏳ 開始日待ち <span class="badge">${notYetStarted.length}</span></div>`;
+    html += notYetStarted.map(t => renderTodoItem(t, today, false, subtaskMap)).join('');
+  }
+
   // 最近の完了
   const recentDone = topLevel.filter(t => t.status === 'done').slice(0, 5);
   if (recentDone.length) {
@@ -328,7 +340,7 @@ function renderTodoItem(t, today, showDone = false, subtaskMap = {}) {
       <div class="todo-content">
         <div class="todo-text" style="${isDone ? 'text-decoration:line-through;' : ''}">${categoryBadge}${escHtml(t.text)}${hasSubtasks ? `<span class="subtask-count">${doneSubCount}/${subtasks.length}</span>` : ''}</div>
         <div class="todo-meta ${overdue ? 'overdue' : ''}">
-          ${t.due ? `📅 ${t.due}${overdue ? ' 期限超過！' : ''}` : ''}
+          ${t.start_date ? `⏳ ${t.start_date}〜` : ''}${t.due ? `📅 ${t.due}${overdue ? ' 期限超過！' : ''}` : ''}
           ${t.tag ? ` #${t.tag}` : ''}
           ${isDone && t.done_at ? ` ✅ ${t.done_at.slice(0, 10)}` : ''}
         </div>
@@ -530,6 +542,7 @@ function openEdit(todoJson) {
   document.getElementById('todoEditId').value = t.id;
   document.getElementById('todoEditText').value = t.text || '';
   document.getElementById('todoEditTag').value = t.tag || '';
+  document.getElementById('todoEditStartDate').value = t.start_date || '';
   document.getElementById('todoEditDue').value = t.due || '';
   document.querySelectorAll('.todo-edit-priority').forEach(b => {
     b.classList.toggle('selected', b.dataset.priority === (t.priority || 'mid'));
@@ -559,11 +572,12 @@ async function saveEdit() {
   const id = document.getElementById('todoEditId').value;
   const text = document.getElementById('todoEditText').value.trim();
   const tag = document.getElementById('todoEditTag').value.trim() || null;
+  const start_date = document.getElementById('todoEditStartDate').value || null;
   const due = document.getElementById('todoEditDue').value || null;
   const priority = document.querySelector('.todo-edit-priority.selected')?.dataset.priority || 'mid';
   const category = document.querySelector('.todo-edit-category.selected')?.dataset.category || null;
   try {
-    await apiFetch('/api/todo', { method: 'PUT', body: JSON.stringify({ id, text, tag, due, priority, category }) });
+    await apiFetch('/api/todo', { method: 'PUT', body: JSON.stringify({ id, text, tag, due, start_date, priority, category }) });
     showToast('✅ 更新しました');
     closeEdit();
     await load();

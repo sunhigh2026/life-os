@@ -19,14 +19,16 @@ export async function onRequestGet({ env }) {
     .bind(`${today}%`)
     .all();
 
-  // 未完了ToDo
+  // 未完了ToDo（開始日が未来のものは非表示）
   const { results: openTodos } = await env.DB.prepare(
-    `SELECT * FROM todos WHERE status = 'open' AND parent_id IS NULL ORDER BY
+    `SELECT * FROM todos WHERE status = 'open' AND parent_id IS NULL
+      AND (start_date IS NULL OR start_date <= ?)
+    ORDER BY
       CASE priority WHEN 'high' THEN 0 WHEN 'mid' THEN 1 ELSE 2 END,
       CASE WHEN due IS NULL THEN 1 ELSE 0 END,
       due ASC, created_at DESC
     LIMIT 30`
-  ).all();
+  ).bind(today).all();
 
   // 同月日の振り返り（過去の今日）
   const monthDay = today.slice(5); // MM-DD

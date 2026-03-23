@@ -302,10 +302,11 @@ async function submit() {
       showToast('📝 記録しました！');
     } else {
       const due = document.getElementById('dueDate').value || null;
+      const start_date = document.getElementById('startDate').value || null;
       const category = selectedCategory || null;
       await apiFetch('/api/todo', {
         method: 'POST',
-        body: JSON.stringify({ datetime, text, tag, priority: selectedPriority, due, category }),
+        body: JSON.stringify({ datetime, text, tag, priority: selectedPriority, due, start_date, category }),
       });
       showToast('☑ ToDoを追加しました！');
     }
@@ -314,6 +315,7 @@ async function submit() {
     document.getElementById('textInput').value = '';
     document.getElementById('tagInput').value = '';
     document.getElementById('dueDate').value = '';
+    document.getElementById('startDate').value = '';
     setNow();
     selectedMood = null;
     selectedCategory = '';
@@ -521,6 +523,7 @@ function openTodoEdit(todoJson) {
   document.getElementById('todoEditId').value = t.id;
   document.getElementById('todoEditText').value = t.text || '';
   document.getElementById('todoEditTag').value = t.tag || '';
+  document.getElementById('todoEditStartDate').value = t.start_date || '';
   document.getElementById('todoEditDue').value = t.due || '';
   document.querySelectorAll('.todo-edit-priority').forEach((btn) => {
     btn.classList.toggle('selected', btn.dataset.priority === (t.priority || 'mid'));
@@ -538,6 +541,7 @@ async function saveTodoEdit() {
   const id = document.getElementById('todoEditId').value;
   const text = document.getElementById('todoEditText').value.trim();
   const tag = document.getElementById('todoEditTag').value.trim() || null;
+  const start_date = document.getElementById('todoEditStartDate').value || null;
   const due = document.getElementById('todoEditDue').value || null;
   const priority = document.querySelector('.todo-edit-priority.selected')?.dataset.priority || 'mid';
   const category = document.querySelector('.todo-edit-category.selected')?.dataset.category || null;
@@ -545,7 +549,7 @@ async function saveTodoEdit() {
   try {
     await apiFetch('/api/todo', {
       method: 'PUT',
-      body: JSON.stringify({ id, text, tag, due, priority, category }),
+      body: JSON.stringify({ id, text, tag, due, start_date, priority, category }),
     });
     showToast('✅ 更新しました');
     closeTodoEdit();
@@ -755,8 +759,28 @@ async function loadCalendar() {
   const slider = document.getElementById('weekSlider');
   const countEl = document.getElementById('calendarCount');
   try {
-    const data = await apiFetch('/api/calendar?action=week');
-    if (!data.connected) {
+    // カレンダーイベントとToDoを並行取得
+    const [calData, todoData] = await Promise.all([
+      apiFetch('/api/calendar?action=week').catch(() => ({ connected: false, events: [] })),
+      apiFetch('/api/todo?status=open').catch(() => ({ todos: [] })),
+    ]);
+
+    // 期限付きToDoをカレンダーイベント形式に変換
+    const todoEvents = (todoData.todos || [])
+      .filter(t => t.due && !t.parent_id)
+      .map(t => ({
+        id: 'todo-' + t.id,
+        summary: '☑ ' + t.text,
+        start: t.due,
+        end: t.due,
+        allDay: true,
+        isTodo: true,
+        priority: t.priority,
+      }));
+
+    const allEvents = [...(calData.events || []), ...todoEvents];
+
+    if (!calData.connected && todoEvents.length === 0) {
       section.style.display = '';
       document.getElementById('weekNav').innerHTML = '';
       slider.innerHTML = `<div class="empty-msg" style="min-width:100%;padding:16px;">
@@ -766,7 +790,7 @@ async function loadCalendar() {
       return;
     }
     section.style.display = '';
-    renderWeekSlider(data.events);
+    renderWeekSlider(allEvents);
   } catch (e) {
     section.style.display = 'none';
   }
@@ -818,8 +842,9 @@ function renderWeekSlider(events) {
       eventsHtml = '<div class="week-day-empty">予定なし</div>';
     } else {
       eventsHtml = dayEvents.map(ev => {
-        const time = ev.allDay ? '終日' : formatEventTime(ev.start, ev.end);
-        return `<div class="week-event-item">
+        const time = ev.allDay ? (ev.isTodo ? '期限' : '終日') : formatEventTime(ev.start, ev.end);
+        const todoStyle = ev.isTodo ? 'background:#f0fdf4;border-left:3px solid #5BA68A;' : '';
+        return `<div class="week-event-item" style="${todoStyle}">
           <span class="week-event-time">${time}</span>
           <div>
             <div class="week-event-title">${escHtml(ev.summary)}</div>

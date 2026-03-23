@@ -64,9 +64,6 @@ button:active { transform: scale(0.97); }
 
 /* ===== Input area ===== */
 .input-area {
-  position: sticky;
-  top: 0;
-  z-index: 100;
   background: var(--bg-card);
   border-bottom: 1px solid var(--border);
   padding: 16px;

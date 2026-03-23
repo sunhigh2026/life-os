@@ -38,7 +38,7 @@ export async function onRequestGet({ request, env }) {
 // POST /api/todo
 export async function onRequestPost({ request, env }) {
   const body = await request.json();
-  const { datetime, text, tag, priority, due, category, parent_id } = body;
+  const { datetime, text, tag, priority, due, category, parent_id, start_date } = body;
 
   if (!datetime || !text) {
     return json({ error: 'datetime and text required' }, 400);
@@ -46,18 +46,18 @@ export async function onRequestPost({ request, env }) {
 
   const id = generateId();
   await env.DB.prepare(
-    `INSERT INTO todos (id, datetime, text, tag, priority, due, category, parent_id, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'open')`
+    `INSERT INTO todos (id, datetime, text, tag, priority, due, category, parent_id, start_date, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'open')`
   )
-    .bind(id, datetime, text, tag ?? null, priority ?? 'mid', due ?? null, category ?? null, parent_id ?? null)
+    .bind(id, datetime, text, tag ?? null, priority ?? 'mid', due ?? null, category ?? null, parent_id ?? null, start_date ?? null)
     .run();
 
-  return json({ id, datetime, text, tag, priority, due, category, parent_id: parent_id ?? null, status: 'open' }, 201);
+  return json({ id, datetime, text, tag, priority, due, category, parent_id: parent_id ?? null, start_date: start_date ?? null, status: 'open' }, 201);
 }
 
 // PUT /api/todo — ステータス更新・期限変更・優先度変更
 export async function onRequestPut({ request, env }) {
   const body = await request.json();
-  const { id, status, due, priority, text, tag, category } = body;
+  const { id, status, due, priority, text, tag, category, start_date } = body;
 
   if (!id) {
     return json({ error: 'id required' }, 400);
@@ -95,6 +95,10 @@ export async function onRequestPut({ request, env }) {
   if (category !== undefined) {
     updates.push('category = ?');
     values.push(category);
+  }
+  if (start_date !== undefined) {
+    updates.push('start_date = ?');
+    values.push(start_date);
   }
 
   if (updates.length === 0) {
