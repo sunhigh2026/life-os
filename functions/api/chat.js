@@ -114,7 +114,7 @@ export async function onRequestPost({ request, env }) {
       const ymd = jst.toISOString().slice(0, 10);
       const timeMin = new Date(ymd + 'T00:00:00+09:00');
       const timeMax = new Date(ymd + 'T00:00:00+09:00');
-      timeMax.setDate(timeMax.getDate() + 2);
+      timeMax.setDate(timeMax.getDate() + 10);
 
       const params = new URLSearchParams({
         timeMin: timeMin.toISOString(), timeMax: timeMax.toISOString(),
@@ -129,7 +129,7 @@ export async function onRequestPost({ request, env }) {
           const start = ev.start?.dateTime?.slice(11, 16) || '終日';
           return `- ${ev.start?.dateTime?.slice(0, 10) || ev.start?.date} ${start} ${ev.summary || '(無題)'}`;
         });
-        if (events.length) calendarText = `\n\n今日〜明日のカレンダー予定:\n${events.join('\n')}`;
+        if (events.length) calendarText = `\n\n今後のカレンダー予定:\n${events.join('\n')}`;
       }
     } catch (_) {}
   }

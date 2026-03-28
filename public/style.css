@@ -1122,7 +1122,7 @@ input[type="datetime-local"] { flex: 1; }
 /* ===== Edit Modal Photo Preview ===== */
 .edit-photo-preview {
   width: 100%;
-  max-width: 200px;
+  max-width: 120px;
   aspect-ratio: 1;
   border-radius: 12px;
   object-fit: cover;

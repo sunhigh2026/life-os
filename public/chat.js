@@ -102,17 +102,23 @@ function toggleChatVoice() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   chatRecognition = new SR();
   chatRecognition.lang = 'ja-JP';
+  chatRecognition.continuous = true;
+  chatRecognition.interimResults = true;
   chatRecognition.onstart = () => {
     isChatRecording = true;
     document.getElementById('chatVoiceBtn').classList.add('recording');
   };
   chatRecognition.onresult = (e) => {
-    document.getElementById('chatInput').value += e.results[0][0].transcript;
+    let text = '';
+    for (let i = 0; i < e.results.length; i++) {
+      text += e.results[i][0].transcript;
+    }
+    document.getElementById('chatInput').value = text;
   };
   chatRecognition.onend = () => {
     isChatRecording = false;
     document.getElementById('chatVoiceBtn').classList.remove('recording');
-    sendMessage();
+    if (document.getElementById('chatInput').value.trim()) sendMessage();
   };
   chatRecognition.start();
 }

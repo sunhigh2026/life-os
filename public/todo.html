@@ -237,12 +237,12 @@ function render() {
   weekEnd.setDate(weekEnd.getDate() + (7 - weekEnd.getDay())); // 次の日曜
   const weekEndStr = weekEnd.toISOString().slice(0, 10);
 
-  // グループ分け（開始日が未来のものは「あとでやる」に分類）
-  const notYetStarted = open.filter(t => t.start_date && t.start_date > today);
+  // グループ分け（開始日が未来でも期限が今週/来週なら表示）
+  const overdue = open.filter(t => t.due && t.due < today);
+  const thisWeek = open.filter(t => t.due && t.due >= today && t.due <= weekEndStr && !overdue.includes(t));
+  const later = open.filter(t => t.due && t.due > weekEndStr);
   const active = open.filter(t => !t.start_date || t.start_date <= today);
-  const overdue = active.filter(t => t.due && t.due < today);
-  const thisWeek = active.filter(t => t.due && t.due >= today && t.due <= weekEndStr && !overdue.includes(t));
-  const later = active.filter(t => t.due && t.due > weekEndStr);
+  const notYetStarted = open.filter(t => t.start_date && t.start_date > today && !t.due);
   const noDue = active.filter(t => !t.due);
 
   let html = '';

@@ -120,7 +120,8 @@
       "Bash(powershell -Command \"try { $r = Invoke-WebRequest -Uri ''http://localhost:8788/api/fitness'' -Method POST -Headers @{''Authorization''=''Bearer hidapia2026''; ''Content-Type''=''application/json''} -Body ''{\"\"date\"\":\"\"2026-03-23\"\",\"\"steps\"\":5000,\"\"active_minutes\"\":30,\"\"calories\"\":1800,\"\"sleep_minutes\"\":420}'' -UseBasicParsing; $r.StatusCode; $r.Content } catch { $_Exception.Response.StatusCode.value__; $sr = [System.IO.StreamReader]::new\\($_Exception.Response.GetResponseStream\\(\\)\\); $sr.ReadToEnd\\(\\) }\")",
       "Bash(curl -s -w \"\\\\nHTTP_CODE:%{http_code}\" -X POST http://localhost:8788/api/fitness -H \"Authorization: Bearer hidapia2026\" -H \"Content-Type: application/json\" -d \"{\"\"date\"\":\"\"2026-03-23\"\",\"\"steps\"\":5000,\"\"active_minutes\"\":30,\"\"calories\"\":1800,\"\"sleep_minutes\"\":420}\")",
       "Bash(curl -s http://localhost:8788/api/fitness?action=today -H \"Authorization: Bearer hidapia2026\")",
-      "Bash(curl -s http://localhost:8788/api/fitness?action=weekly -H \"Authorization: Bearer hidapia2026\")"
+      "Bash(curl -s http://localhost:8788/api/fitness?action=weekly -H \"Authorization: Bearer hidapia2026\")",
+      "Bash(grep -r \"photo\\\\|image\\\\|preview\\\\|upload\" /c/Users/ocura/Documents/Dev/life-os/public/*.js /c/Users/ocura/Documents/Dev/life-os/public/*.html)"
     ]
   }
 }

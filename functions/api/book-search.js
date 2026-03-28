@@ -46,7 +46,7 @@ async function searchByIsbn(isbn) {
           isbn: s.isbn || isbn,
           title: s.title || '',
           author: s.author || '',
-          cover_url: s.cover || null,
+          cover_url: s.cover || (s.isbn ? `https://books.google.com/books/content?vid=isbn:${s.isbn}&printsec=frontcover&img=1&zoom=1` : null),
           publisher: s.publisher || '',
           published_date: s.pubdate || '',
         }],

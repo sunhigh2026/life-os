@@ -349,7 +349,6 @@ async function loadDashboard() {
     renderDailySummary(data.summary, data.today);
     renderTodayEntries(data.todayEntries);
     renderTodos(data.openTodos);
-    renderRecentDone(data.recentDone);
     renderStreak(data.streakData, data.today);
   } catch (e) {
     console.error('Dashboard error:', e);
