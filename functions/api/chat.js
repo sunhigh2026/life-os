@@ -64,6 +64,24 @@ function needsRAG(msg) {
   return RAG_KEYWORDS.some(k => msg.includes(k));
 }
 
+// メッセージに応じた日記取得範囲を判定
+function detectEntryRange(msg, today) {
+  const WEEK_KEYWORDS = ['今週', '1週間', '一週間', '7日', '七日'];
+  const MONTH_KEYWORDS = ['今月', '1ヶ月', '一ヶ月', '30日', '三十日'];
+  if (WEEK_KEYWORDS.some(k => msg.includes(k))) {
+    const d = new Date(today); d.setDate(d.getDate() - 7);
+    return { from: d.toISOString().slice(0, 10), label: '今週' };
+  }
+  if (MONTH_KEYWORDS.some(k => msg.includes(k))) {
+    const d = new Date(today); d.setDate(d.getDate() - 30);
+    return { from: d.toISOString().slice(0, 10), label: '今月' };
+  }
+  if (msg.includes('今日') || msg.includes('きょう')) {
+    return { from: today, label: '今日' };
+  }
+  return null;
+}
+
 // POST /api/chat
 export async function onRequestPost({ request, env }) {
   const body = await request.json();
@@ -74,9 +92,15 @@ export async function onRequestPost({ request, env }) {
   // モデル選択: クライアント指定 > キーワード判定 > デフォルト
   const model = body.mode === 'pro' || detectHeavyTask(message) ? 'pro' : 'flash';
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
-  // コンテキスト + キャラ設定を並行取得（日記は3件に削減、RAGで補完）
+  // メッセージに応じた日記取得範囲
+  const entryRange = detectEntryRange(message, today);
+  const entryQuery = entryRange
+    ? env.DB.prepare(`SELECT datetime, mood, tag, text FROM entries WHERE datetime >= ? ORDER BY datetime DESC LIMIT 50`).bind(entryRange.from).all()
+    : env.DB.prepare(`SELECT datetime, mood, tag, text FROM entries ORDER BY datetime DESC LIMIT 3`).all();
+
+  // コンテキスト + キャラ設定を並行取得
   const [
     { results: recentEntries },
     { results: openTodos },
@@ -86,7 +110,7 @@ export async function onRequestPost({ request, env }) {
     { results: activeGoals },
     { results: menstrualDates },
   ] = await Promise.all([
-    env.DB.prepare(`SELECT datetime, mood, tag, text FROM entries ORDER BY datetime DESC LIMIT 3`).all(),
+    entryQuery,
     env.DB.prepare(`SELECT text, tag, priority, due, category FROM todos WHERE status = 'open' AND parent_id IS NULL ORDER BY created_at DESC LIMIT 10`).all(),
     env.DB.prepare(`SELECT title, author, rating, status, note FROM books ORDER BY datetime DESC LIMIT 5`).all(),
     env.DB.prepare(`SELECT key, value FROM settings WHERE key IN ('char_system_prompt', 'char_name', 'gcal_access_token', 'gcal_refresh_token', 'gcal_token_expires')`).all(),
