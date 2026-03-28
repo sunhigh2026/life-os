@@ -15,6 +15,9 @@ bucket_name = "lifeos-photos"
 binding = "VECTORIZE"
 index_name = "lifeos-vectors"
 
+[ai]
+binding = "AI"
+
 # 環境変数はCloudflare Pagesダッシュボード Settings > Variables and Secrets で設定してください
 # Vectorize インデックスは初回デプロイ前に以下で作成してください:
-#   wrangler vectorize create lifeos-vectors --dimensions=768 --metric=cosine
+#   wrangler vectorize create lifeos-vectors --dimensions=1024 --metric=cosine

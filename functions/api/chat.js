@@ -139,7 +139,7 @@ export async function onRequestPost({ request, env }) {
   if (needsRAG(message) && env.VECTORIZE) {
     try {
       const { getEmbedding } = await import('./_gemini.js');
-      const queryVector = await getEmbedding({ apiKey: env.GEMINI_API_KEY, text: message });
+      const queryVector = await getEmbedding({ ai: env.AI, text: message });
       if (queryVector.length > 0) {
         const results = await env.VECTORIZE.query(queryVector, { topK: 5, returnMetadata: true });
         const hits = results.matches || [];

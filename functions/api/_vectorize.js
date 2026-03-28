@@ -1,4 +1,4 @@
-// Cloudflare Vectorize + Gemini Embedding ユーティリティ
+// Cloudflare Vectorize + Workers AI Embedding (bge-m3) ユーティリティ
 // ベクトルID形式: "{source_type}:{source_id}"  例: "entry:uuid", "chat:uuid"
 // メタデータ: { source_type, source_id, date, preview }
 
@@ -16,13 +16,13 @@ import { getEmbedding } from './_gemini.js';
  * @param {Object} [opts.metadata] - 追加メタデータ（date等）
  */
 export async function embedAndStore({ env, sourceType, sourceId, text, metadata = {} }) {
-  if (!env.VECTORIZE || !env.GEMINI_API_KEY) return;
+  if (!env.VECTORIZE || !env.AI) return;
   if (!text || text.trim().length === 0) return;
 
   const vectorId = `${sourceType}:${sourceId}`;
   const preview = text.slice(0, 100);
 
-  const values = await getEmbedding({ apiKey: env.GEMINI_API_KEY, text });
+  const values = await getEmbedding({ ai: env.AI, text });
   if (!values || values.length === 0) return;
 
   await env.VECTORIZE.upsert([{
@@ -55,9 +55,9 @@ export async function embedAndStore({ env, sourceType, sourceId, text, metadata 
  * @returns {Promise<Array>} マッチ結果の配列 { id, score, metadata }
  */
 export async function searchSimilar({ env, queryText, topK = 5, filterSourceType }) {
-  if (!env.VECTORIZE || !env.GEMINI_API_KEY) return [];
+  if (!env.VECTORIZE || !env.AI) return [];
 
-  const queryVector = await getEmbedding({ apiKey: env.GEMINI_API_KEY, text: queryText });
+  const queryVector = await getEmbedding({ ai: env.AI, text: queryText });
   if (!queryVector || queryVector.length === 0) return [];
 
   const queryOptions = { topK, returnMetadata: true };

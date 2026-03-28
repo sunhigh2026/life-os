@@ -49,35 +49,17 @@ export async function callGemini({ apiKey, model = 'flash', contents, generation
 }
 
 /**
- * Gemini text-embedding-004 でテキストをベクトル化（768次元）
+ * Cloudflare Workers AI (bge-m3) でテキストをベクトル化（1024次元）
  * @param {Object} opts
- * @param {string} opts.apiKey
+ * @param {Object} opts.ai - Cloudflare AI binding (env.AI)
  * @param {string} opts.text - 埋め込むテキスト（5000文字以内に自動切り詰め）
- * @returns {Promise<number[]>} 768次元の浮動小数点配列
+ * @returns {Promise<number[]>} 1024次元の浮動小数点配列
  */
-export async function getEmbedding({ apiKey, text }) {
-  // 5000文字で切り詰め（text-embedding-004 の入力上限 ~2048トークンに対応）
+export async function getEmbedding({ ai, text }) {
   const truncated = text.slice(0, 5000);
 
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1/models/text-embedding-004:embedContent?key=${apiKey}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'models/text-embedding-004',
-        content: { parts: [{ text: truncated }] },
-      }),
-    }
-  );
-
-  if (!res.ok) {
-    const errData = await res.json().catch(() => ({}));
-    throw new Error(`Embedding API error: ${errData.error?.message || res.status}`);
-  }
-
-  const data = await res.json();
-  return data.embedding?.values || [];
+  const result = await ai.run('@cf/baai/bge-m3', { text: [truncated] });
+  return result?.data?.[0] || [];
 }
 
 /**
