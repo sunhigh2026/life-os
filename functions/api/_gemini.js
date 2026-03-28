@@ -1,12 +1,12 @@
 // Gemini API 共通ユーティリティ
 // モデル3段階:
-//   "lite"  → gemini-1.5-flash（分類・提案など軽量構造化タスク）
-//   "flash" → gemini-2.5-flash（通常チャット・タスク分解）
+//   "lite"  → gemini-3.1-flash-lite-preview（分類・提案など軽量構造化タスク）
+//   "flash" → gemini-3.1-flash-lite-preview（通常チャット・タスク分解）
 //   "pro"   → gemini-2.5-pro（週次レポート・深い分析）
 
 const MODEL_MAP = {
   lite:  'gemini-1.5-flash',
-  flash: 'gemini-2.5-flash',
+  flash: 'gemini-3.1-flash-lite-preview',
   pro:   'gemini-2.5-pro',
 };
 

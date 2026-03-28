@@ -231,15 +231,7 @@ async function classifyInput(text) {
     const hint = document.getElementById('aiClassifyHint');
     if (!hint) return;
 
-    if (data.mode === 'todo' && mode === 'diary') {
-      hint.innerHTML = `<span style="cursor:pointer;" onclick="applyAiClassify('todo')">💡 ToDoかも？ タップで切替</span>`;
-      hint.style.display = '';
-      hint._aiData = data;
-    } else if (data.mode === 'diary' && mode === 'todo') {
-      hint.innerHTML = `<span style="cursor:pointer;" onclick="applyAiClassify('diary')">💡 日記かも？ タップで切替</span>`;
-      hint.style.display = '';
-      hint._aiData = data;
-    } else if (data.mode === 'query') {
+    if (data.mode === 'query') {
       hint.innerHTML = `<span style="cursor:pointer;" onclick="applyAiClassify('query')">💡 ピアちゃんに聞く？ タップでチャットへ</span>`;
       hint.style.display = '';
       hint._aiData = data;
