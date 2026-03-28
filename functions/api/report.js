@@ -51,7 +51,7 @@ async function gatherWeeklyData(db, from, to) {
       `SELECT title, author, cover_url, rating, note, status FROM books WHERE status = 'done' AND datetime >= ? AND datetime < ?`
     ).bind(from, to).all(),
     db.prepare(
-      `SELECT date, steps, active_minutes FROM fitness WHERE date >= ? AND date < ? ORDER BY date`
+      `SELECT date, steps, active_minutes, calories, weight, sleep_minutes FROM fitness WHERE date >= ? AND date < ? ORDER BY date`
     ).bind(from, to).all(),
   ]);
 
@@ -73,7 +73,7 @@ async function gatherLastWeekStats(db, from) {
     db.prepare(`SELECT COUNT(*) as c FROM todos WHERE status = 'done' AND done_at >= ? AND done_at < ?`).bind(lFrom, lTo).first(),
     // 読了した本のみ
     db.prepare(`SELECT COUNT(*) as c FROM books WHERE status = 'done' AND datetime >= ? AND datetime < ?`).bind(lFrom, lTo).first(),
-    db.prepare(`SELECT AVG(steps) as s FROM fitness WHERE date >= ? AND date < ?`).bind(lFrom, lTo).first(),
+    db.prepare(`SELECT AVG(steps) as s, AVG(sleep_minutes) as sl FROM fitness WHERE date >= ? AND date < ?`).bind(lFrom, lTo).first(),
   ]);
   return {
     entryCount: entries.c || 0,
@@ -81,6 +81,7 @@ async function gatherLastWeekStats(db, from) {
     todoDone:   done.c || 0,
     bookCount:  books.c || 0,
     avgSteps:   fit.s ? Math.round(fit.s) : null,
+    avgSleep:   fit.sl ? Math.round(fit.sl) : null,
   };
 }
 
@@ -172,7 +173,7 @@ async function generateStructuredComment(apiKey, { entries, doneTodos, openTodos
   },
   "todo_comment": "ToDo消化率へのコメント。完了を褒めつつ、持ち越しがあれば無理しないでねとフォロー。2〜3文",
   "book_comment": "読書に関するコメント。読了があれば感想に触れる。なければ来週の提案。1〜2文",
-  "fitness_comment": "歩数データへのコメント。最多日と最少日に触れて1〜2文",
+  "fitness_comment": "フィットネスデータ（歩数・睡眠・体重等）へのコメント。頑張った日や睡眠の質に触れて1〜2文",
   "next_week_advice": [
     "来週の予定とToDoを見て具体的な提案1",
     "来週の予定とToDoを見て具体的な提案2",
@@ -201,8 +202,16 @@ ${openTodos.map(t => `□ ${t.text} 期限:${t.due || 'なし'}`).join('\n') || 
 ### 読書（${books.length}冊）
 ${books.map(b => `「${b.title}」★${b.rating || '-'} ${b.note || ''}`).join('\n') || 'なし'}
 
-### 歩数
-${fitnessPerDay.map(f => `${f.date}: ${f.steps || 0}歩 ${f.active_minutes || 0}分`).join('\n') || 'なし'}
+### フィットネス
+${fitnessPerDay.map(f => {
+  const parts = [`${f.date}:`];
+  if (f.steps) parts.push(`${f.steps}歩`);
+  if (f.active_minutes) parts.push(`活動${f.active_minutes}分`);
+  if (f.calories) parts.push(`${f.calories}kcal`);
+  if (f.sleep_minutes) parts.push(`睡眠${Math.floor(f.sleep_minutes / 60)}h${f.sleep_minutes % 60}m`);
+  if (f.weight) parts.push(`${f.weight}kg`);
+  return parts.join(' ');
+}).join('\n') || 'なし'}
 
 ### 先週の数値（比較用）
 日記:${lastWeek.entryCount}件 / mood:${lastWeek.avgMood ?? '-'} / ToDo完了:${lastWeek.todoDone}件 / 読書:${lastWeek.bookCount}冊 / 平均歩数:${lastWeek.avgSteps ?? '-'}
@@ -214,21 +223,17 @@ ${nextWeekEvents.map(e => `${e.date} ${e.startTime}${e.endTime ? '-' + e.endTime
 ${nextWeekTodos.map(t => `□ ${t.text} 期限:${t.due}`).join('\n') || 'なし'}
 `.trim();
 
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-    { method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) }
-  );
-  if (!res.ok) throw new Error(`Gemini API error: ${res.status}`);
-  const data = await res.json();
-  const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
-  const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
-  try {
-    return JSON.parse(cleaned);
-  } catch {
-    return { summary: raw.slice(0, 200), best_moment: null, tough_moment: null,
-             todo_comment: '', book_comment: '', fitness_comment: '', next_week_advice: [] };
-  }
+  const { callGemini, extractJson } = await import('./_gemini.js');
+  // 週次レポートは深い分析が必要なため pro モデルを使用
+  const raw = await callGemini({
+    apiKey,
+    model: 'pro',
+    contents: [{ parts: [{ text: prompt }] }],
+  });
+  const parsed = extractJson(raw);
+  if (parsed) return parsed;
+  return { summary: raw.slice(0, 200), best_moment: null, tough_moment: null,
+           todo_comment: '', book_comment: '', fitness_comment: '', next_week_advice: [] };
 }
 
 // ==============================

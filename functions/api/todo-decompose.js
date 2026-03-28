@@ -62,44 +62,13 @@ ${taskInfo}
   }
 
   try {
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${env.GEMINI_API_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.4, maxOutputTokens: 4096 },
-        }),
-      }
-    );
-
-    if (!res.ok) {
-      const errText = await res.text().catch(() => '');
-      return json({
-        subtasks: [
-          { text: `${text}に必要な情報を調べてメモする`, due: null },
-          { text: `${text}の具体的な段取りを書き出す`, due: null },
-        ],
-        comment: 'AIが一時的にエラーだったよ〜',
-        _debug: `api_${res.status}`,
-      });
-    }
-
-    const data = await res.json();
-
-    // Gemini 2.5 Flash: partsからテキストを取得
-    // thoughtパートは thought: true フラグを持つ（混在するとパース失敗の原因）
-    const parts = data.candidates?.[0]?.content?.parts || [];
-
-    // 全パートのテキストを連結（まず非thoughtを優先、なければ全部）
-    let responseText = '';
-    const nonThoughtParts = parts.filter(p => p.text !== undefined && p.thought !== true);
-    if (nonThoughtParts.length > 0) {
-      responseText = nonThoughtParts.map(p => p.text).join('');
-    } else {
-      responseText = parts.map(p => p.text || '').join('');
-    }
+    const { callGemini, extractJson } = await import('./_gemini.js');
+    const responseText = await callGemini({
+      apiKey: env.GEMINI_API_KEY,
+      model: 'flash',
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      generationConfig: { temperature: 0.4, maxOutputTokens: 4096 },
+    });
 
     if (!responseText) {
       return json({
@@ -108,28 +77,10 @@ ${taskInfo}
           { text: `${text}の具体的な段取りを書き出す`, due: null },
         ],
         comment: 'AIの返答が空だったよ〜',
-        _debug: `empty_response_parts_${parts.length}`,
       });
     }
 
-    // JSON部分を抽出 — 複数の方法で試す
-    let parsed = null;
-
-    // 方法1: ```json ... ``` コードブロック（貪欲マッチでも試す）
-    const codeBlockMatch = responseText.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
-    if (codeBlockMatch) {
-      try { parsed = JSON.parse(codeBlockMatch[1].trim()); } catch (_) {}
-    }
-
-    // 方法2: 最も外側の { ... } を取得
-    if (!parsed) {
-      const braceStart = responseText.indexOf('{');
-      const braceEnd = responseText.lastIndexOf('}');
-      if (braceStart !== -1 && braceEnd > braceStart) {
-        try { parsed = JSON.parse(responseText.slice(braceStart, braceEnd + 1)); } catch (_) {}
-      }
-    }
-
+    const parsed = extractJson(responseText);
     if (parsed && parsed.subtasks && parsed.subtasks.length > 0) {
       return json({
         subtasks: parsed.subtasks,
@@ -137,15 +88,12 @@ ${taskInfo}
       });
     }
 
-    // JSONパース失敗 → デバッグ情報付きフォールバック
     return json({
       subtasks: [
         { text: `${text}に必要な情報を調べてメモする`, due: null },
         { text: `${text}の具体的な段取りを書き出す`, due: null },
       ],
       comment: 'AIの返答を解析できなかったよ〜',
-      _debug: 'parse_fail',
-      _raw: responseText.slice(0, 300),
     });
   } catch (e) {
     return json({

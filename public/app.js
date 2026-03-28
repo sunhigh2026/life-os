@@ -472,9 +472,11 @@ function renderTodayEntries(entries) {
       <div class="entry-content">
         ${e.tag ? `<div class="entry-tag">#${e.tag}</div>` : ''}
         <div class="entry-text">${escHtml(e.text || '').replace(/\n/g, '<br>')}</div>
+        ${renderPhotoThumbnail(e.photo_url, e.id)}
       </div>
     </div>
   `).join('');
+  loadVisiblePhotos(el);
 }
 
 function renderTodos(todos) {
@@ -654,6 +656,8 @@ async function loadFitness() {
 
     const steps = latest?.steps || 0;
     const activeMin = latest?.active_minutes || 0;
+    const calories = latest?.calories || 0;
+    const sleepMin = latest?.sleep_minutes || 0;
     const latestWeight = recent.find(r => r.weight);
     const weight = latestWeight?.weight || null;
 
@@ -661,10 +665,18 @@ async function loadFitness() {
     const goalSteps = 10000;
     const stepPct = Math.min(100, Math.round((steps / goalSteps) * 100));
 
-    // 詳細行
-    const details = [];
-    if (activeMin) details.push(`🏃 活動 ${activeMin}分`);
-    if (weight) details.push(`⚖️ ${weight} kg`);
+    // 睡眠時間フォーマット
+    const sleepHr = Math.floor(sleepMin / 60);
+    const sleepRem = sleepMin % 60;
+    const sleepStr = sleepMin ? `${sleepHr}時間${sleepRem ? sleepRem + '分' : ''}` : '';
+
+    // メトリクスカード
+    const metrics = [];
+    if (steps) metrics.push(`<div class="fitness-metric"><span class="fitness-metric-icon">🚶</span><span class="fitness-metric-val">${steps.toLocaleString()}</span><span class="fitness-metric-unit">歩</span></div>`);
+    if (activeMin) metrics.push(`<div class="fitness-metric"><span class="fitness-metric-icon">⏱</span><span class="fitness-metric-val">${activeMin}</span><span class="fitness-metric-unit">分</span></div>`);
+    if (calories) metrics.push(`<div class="fitness-metric"><span class="fitness-metric-icon">🔥</span><span class="fitness-metric-val">${calories.toLocaleString()}</span><span class="fitness-metric-unit">kcal</span></div>`);
+    if (weight) metrics.push(`<div class="fitness-metric"><span class="fitness-metric-icon">⚖️</span><span class="fitness-metric-val">${weight}</span><span class="fitness-metric-unit">kg</span></div>`);
+    if (sleepStr) metrics.push(`<div class="fitness-metric"><span class="fitness-metric-icon">😴</span><span class="fitness-metric-val">${sleepStr}</span></div>`);
 
     // メインレイアウト
     el.innerHTML = `
@@ -678,8 +690,10 @@ async function loadFitness() {
           <span style="font-size:9px;color:var(--text-sub);margin-top:2px;">${stepPct}% / 目標1万歩</span>` : ''}
         </div>
         <div class="fitness-details">
-          ${details.map(d => `<div class="fitness-detail-row">${d}</div>`).join('')}
-          ${!details.length && !steps ? '<div class="fitness-detail-row" style="color:var(--text-sub);">データなし</div>' : ''}
+          ${metrics.length > 1 ? `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px;">
+            ${metrics.slice(1).join('')}
+          </div>` : ''}
+          ${!metrics.length ? '<div class="fitness-detail-row" style="color:var(--text-sub);">データなし</div>' : ''}
         </div>
       </div>
     `;
@@ -698,6 +712,23 @@ async function loadFitness() {
         </div>`;
       }).join('');
       el.innerHTML += `<div class="fitness-chart">${bars}</div>`;
+    }
+
+    // 直近7日の睡眠バーチャート
+    const sleepData = recent.filter(r => r.sleep_minutes).slice(0, 7).reverse();
+    if (sleepData.length >= 2) {
+      const maxSleep = Math.max(...sleepData.map(r => r.sleep_minutes || 0), 1);
+      const todayDate = today?.date || '';
+      const sleepBars = sleepData.map(r => {
+        const pct = Math.max(2, Math.round(((r.sleep_minutes || 0) / maxSleep) * 48));
+        const isTd = r.date === todayDate;
+        const hrs = Math.floor((r.sleep_minutes || 0) / 60);
+        return `<div class="fitness-bar-group">
+          <div class="fitness-bar-fill sleep${isTd ? ' today' : ''}" style="height:${pct}px;" title="${hrs}h"></div>
+          <span class="fitness-bar-date">${r.date.slice(8)}</span>
+        </div>`;
+      }).join('');
+      el.innerHTML += `<div style="font-size:10px;color:var(--text-sub);margin-top:8px;">😴 睡眠</div><div class="fitness-chart">${sleepBars}</div>`;
     }
   } catch (_) {}
 }
@@ -921,4 +952,69 @@ function showToast(msg) {
 // ==============================
 function escHtml(str) {
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// ==============================
+// 写真: 画像処理 + 認証付き読み込み
+// ==============================
+async function processImage(file) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const size = 1080;
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      const minSide = Math.min(img.width, img.height);
+      const sx = (img.width - minSide) / 2;
+      const sy = (img.height - minSide) / 2;
+      ctx.drawImage(img, sx, sy, minSide, minSide, 0, 0, size, size);
+      canvas.toBlob((blob) => {
+        URL.revokeObjectURL(img.src);
+        resolve(blob);
+      }, 'image/webp', 0.8);
+    };
+    img.src = URL.createObjectURL(file);
+  });
+}
+
+async function loadAuthImage(imgEl, key) {
+  const res = await fetch(`/api/photos/${key}`, {
+    headers: { 'Authorization': `Bearer ${AUTH_KEY}` },
+  });
+  if (res.ok) {
+    const blob = await res.blob();
+    imgEl.src = URL.createObjectURL(blob);
+  }
+}
+
+function openLightbox(key) {
+  let overlay = document.getElementById('photoLightbox');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'photoLightbox';
+    overlay.className = 'photo-lightbox';
+    overlay.innerHTML = '<div class="photo-lightbox-close">&times;</div><img class="photo-lightbox-img">';
+    overlay.addEventListener('click', () => { overlay.style.display = 'none'; });
+    document.body.appendChild(overlay);
+  }
+  const img = overlay.querySelector('img');
+  img.src = '';
+  overlay.style.display = 'flex';
+  loadAuthImage(img, key);
+}
+
+function renderPhotoThumbnail(photoUrl, entryId) {
+  if (!photoUrl) return '';
+  return `<img class="entry-photo-thumb" data-photo-key="${escHtml(photoUrl)}" onclick="openLightbox('${escHtml(photoUrl)}')" alt="写真">`;
+}
+
+function loadVisiblePhotos(container) {
+  const imgs = (container || document).querySelectorAll('.entry-photo-thumb[data-photo-key]');
+  imgs.forEach(img => {
+    if (!img.src || img.src === location.href) {
+      loadAuthImage(img, img.dataset.photoKey);
+    }
+  });
 }

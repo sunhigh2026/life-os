@@ -8,7 +8,12 @@ function json(data, status = 200) {
 // ==============================
 // OAuth ヘルパー
 // ==============================
-const SCOPES = 'https://www.googleapis.com/auth/calendar.readonly';
+const SCOPES = [
+  'https://www.googleapis.com/auth/calendar.readonly',
+  'https://www.googleapis.com/auth/fitness.activity.read',
+  'https://www.googleapis.com/auth/fitness.body.read',
+  'https://www.googleapis.com/auth/fitness.sleep.read',
+].join(' ');
 
 function getRedirectUri(request) {
   const url = new URL(request.url);

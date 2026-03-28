@@ -63,27 +63,15 @@ queryの場合:
 - priority, category, mood は null`;
 
   try {
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${env.GEMINI_API_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.2, maxOutputTokens: 2048 },
-        }),
-      }
-    );
-
-    if (!res.ok) {
-      return json({ mode: 'diary', confidence: 0, reason: 'AI error' });
-    }
-
-    const data = await res.json();
-    const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      const parsed = JSON.parse(jsonMatch[0]);
+    const { callGemini, extractJson } = await import('./_gemini.js');
+    const responseText = await callGemini({
+      apiKey: env.GEMINI_API_KEY,
+      model: 'lite',
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      generationConfig: { temperature: 0.2, maxOutputTokens: 512 },
+    });
+    const parsed = extractJson(responseText);
+    if (parsed) {
       return json({
         mode: parsed.mode || 'diary',
         confidence: parsed.confidence || 0,

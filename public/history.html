@@ -55,6 +55,19 @@
       <button class="mood-btn" data-mood="6" onclick="setEditMood(6)">🤩</button>
     </div>
     <textarea id="editText" rows="4" style="resize:vertical;font-family:inherit;font-size:14px;border:1px solid var(--border);border-radius:10px;padding:8px 12px;"></textarea>
+    <!-- 写真セクション -->
+    <div id="editPhotoSection">
+      <div id="editPhotoPreview" style="display:none;">
+        <img id="editPhotoImg" class="edit-photo-preview" alt="写真プレビュー">
+      </div>
+      <div id="editPhotoActions" style="display:flex;gap:8px;align-items:center;">
+        <label class="btn-photo-add" style="font-size:13px;padding:6px 12px;border:1px dashed var(--border);border-radius:10px;cursor:pointer;color:var(--text-sub);display:inline-flex;align-items:center;gap:4px;">
+          <span id="editPhotoLabel">写真を追加</span>
+          <input type="file" id="editPhotoInput" accept="image/*" style="display:none;" onchange="onPhotoSelected(this)">
+        </label>
+        <button id="editPhotoDeleteBtn" onclick="deleteEditPhoto()" style="display:none;font-size:12px;padding:4px 10px;border:1px solid #ffcdd2;border-radius:8px;background:#fff5f5;cursor:pointer;color:#e53935;">写真を削除</button>
+      </div>
+    </div>
     <div style="display:flex;gap:8px;">
       <button class="btn-submit" onclick="saveEdit()">保存</button>
       <button class="btn-submit" onclick="closeEdit()" style="background:#aaa;">キャンセル</button>
@@ -156,6 +169,7 @@ function renderEntries(entries) {
             <div class="entry-content">
               ${e.tag ? `<div class="entry-tag">#${e.tag}</div>` : ''}
               <div class="entry-text">${escHtml(e.text || '').replace(/\n/g, '<br>')}</div>
+              ${e.photo_url ? `<img class="entry-photo-thumb" data-photo-key="${escHtml(e.photo_url)}" onclick="openLightbox('${escHtml(e.photo_url)}')" alt="写真">` : ''}
             </div>
             <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;">
               <button onclick="shareToX(${JSON.stringify(e).replace(/"/g, '&quot;')})" class="share-x-btn" title="Xに共有">
@@ -171,6 +185,7 @@ function renderEntries(entries) {
       </div>
     </div>
   `).join('');
+  loadVisiblePhotos(el);
 }
 
 // 編集
@@ -183,6 +198,7 @@ function openEdit(entry) {
   document.querySelectorAll('#editMoodRow .mood-btn').forEach(b => {
     b.classList.toggle('selected', parseInt(b.dataset.mood) === entry.mood);
   });
+  setupEditPhoto(entry);
   document.getElementById('editModal').style.display = 'flex';
 }
 
@@ -208,6 +224,7 @@ async function saveEdit() {
       method: 'PUT',
       body: JSON.stringify({ id, datetime, mood: editMood, tag, text }),
     });
+    await savePhotoChanges(id);
     showToast('✅ 更新しました');
     closeEdit();
     search();
@@ -286,11 +303,13 @@ async function loadLookback() {
               <div class="entry-content">
                 ${e.tag ? `<div class="entry-tag">#${e.tag}</div>` : ''}
                 <div class="entry-text">${escHtml(e.text || '').replace(/\n/g, '<br>')}</div>
+                ${e.photo_url ? `<img class="entry-photo-thumb" data-photo-key="${escHtml(e.photo_url)}" onclick="openLightbox('${escHtml(e.photo_url)}')" alt="写真">` : ''}
               </div>
             </div>
           `).join('')}
         `;
       }).join('');
+    loadVisiblePhotos(el);
   } catch (_) {}
 }
 
@@ -306,6 +325,142 @@ function shareToX(entry) {
 
 function escHtml(str) {
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// ==============================
+// 写真機能
+// ==============================
+let editPhotoBlob = null;    // 新規選択された画像Blob
+let editPhotoKey = null;     // 既存の写真キー
+let editPhotoChanged = false;
+
+async function processImage(file) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const size = 1080;
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      const minSide = Math.min(img.width, img.height);
+      const sx = (img.width - minSide) / 2;
+      const sy = (img.height - minSide) / 2;
+      ctx.drawImage(img, sx, sy, minSide, minSide, 0, 0, size, size);
+      canvas.toBlob((blob) => {
+        URL.revokeObjectURL(img.src);
+        resolve(blob);
+      }, 'image/webp', 0.8);
+    };
+    img.src = URL.createObjectURL(file);
+  });
+}
+
+async function loadAuthImage(imgEl, key) {
+  const res = await fetch(`/api/photos/${key}`, {
+    headers: { 'Authorization': `Bearer ${AUTH_KEY}` },
+  });
+  if (res.ok) {
+    const blob = await res.blob();
+    imgEl.src = URL.createObjectURL(blob);
+  }
+}
+
+function loadVisiblePhotos(container) {
+  const imgs = (container || document).querySelectorAll('.entry-photo-thumb[data-photo-key]');
+  imgs.forEach(img => {
+    if (!img.src || img.src === location.href) {
+      loadAuthImage(img, img.dataset.photoKey);
+    }
+  });
+}
+
+async function onPhotoSelected(input) {
+  const file = input.files[0];
+  if (!file) return;
+  editPhotoBlob = await processImage(file);
+  editPhotoChanged = true;
+  const preview = document.getElementById('editPhotoPreview');
+  const img = document.getElementById('editPhotoImg');
+  img.src = URL.createObjectURL(editPhotoBlob);
+  preview.style.display = '';
+  document.getElementById('editPhotoLabel').textContent = '写真を変更';
+  document.getElementById('editPhotoDeleteBtn').style.display = '';
+  input.value = '';
+}
+
+function deleteEditPhoto() {
+  editPhotoBlob = null;
+  editPhotoChanged = true;
+  editPhotoKey = null;
+  document.getElementById('editPhotoPreview').style.display = 'none';
+  document.getElementById('editPhotoImg').src = '';
+  document.getElementById('editPhotoLabel').textContent = '写真を追加';
+  document.getElementById('editPhotoDeleteBtn').style.display = 'none';
+}
+
+function setupEditPhoto(entry) {
+  editPhotoBlob = null;
+  editPhotoChanged = false;
+  editPhotoKey = entry.photo_url || null;
+  const preview = document.getElementById('editPhotoPreview');
+  const img = document.getElementById('editPhotoImg');
+  const deleteBtn = document.getElementById('editPhotoDeleteBtn');
+
+  if (editPhotoKey) {
+    preview.style.display = '';
+    deleteBtn.style.display = '';
+    document.getElementById('editPhotoLabel').textContent = '写真を変更';
+    img.src = '';
+    loadAuthImage(img, editPhotoKey);
+  } else {
+    preview.style.display = 'none';
+    deleteBtn.style.display = 'none';
+    document.getElementById('editPhotoLabel').textContent = '写真を追加';
+    img.src = '';
+  }
+}
+
+async function savePhotoChanges(entryId) {
+  if (!editPhotoChanged) return;
+
+  if (editPhotoBlob) {
+    // 新しい写真をアップロード（既存写真はサーバー側で自動削除）
+    const formData = new FormData();
+    formData.append('photo', editPhotoBlob, 'photo.webp');
+    const res = await fetch(`/api/entry-photo?id=${entryId}`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${AUTH_KEY}` },
+      body: formData,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Photo upload failed');
+    }
+  } else {
+    // 写真が削除された（editPhotoBlobもeditPhotoKeyもnull）
+    const res = await fetch(`/api/entry-photo?id=${entryId}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${AUTH_KEY}` },
+    });
+    // 写真がなかった場合の404は無視
+  }
+}
+
+function openLightbox(key) {
+  let overlay = document.getElementById('photoLightbox');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'photoLightbox';
+    overlay.className = 'photo-lightbox';
+    overlay.innerHTML = '<div class="photo-lightbox-close">&times;</div><img class="photo-lightbox-img">';
+    overlay.addEventListener('click', () => { overlay.style.display = 'none'; });
+    document.body.appendChild(overlay);
+  }
+  const img = overlay.querySelector('img');
+  img.src = '';
+  overlay.style.display = 'flex';
+  loadAuthImage(img, key);
 }
 </script>
 </body>

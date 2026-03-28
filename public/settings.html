@@ -206,9 +206,21 @@
     </div>
   </div>
 
+  <!-- Google Fit 連携 -->
+  <div class="settings-section">
+    <h3>🏃 Google Fit 連携</h3>
+    <div id="fitConnectStatus" style="font-size:12px;color:var(--muted);margin-bottom:8px;">確認中...</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn-action" id="fitAuthBtn" onclick="connectFitness()">🔑 Google Fit を認証</button>
+      <button class="btn-action" id="fitSyncBtn" onclick="syncFitness()" style="display:none;">🔄 今すぐ同期（7日分）</button>
+      <button class="btn-action" id="fitSync30Btn" onclick="syncFitness(30)" style="display:none;">📅 30日分同期</button>
+    </div>
+    <div id="fitSyncResult" style="font-size:12px;margin-top:8px;"></div>
+  </div>
+
   <!-- フィットネスCSVインポート -->
   <div class="settings-section">
-    <h3>🏃 フィットネスデータ取り込み</h3>
+    <h3>📂 フィットネスCSV取り込み</h3>
     <p style="font-size:12px;color:var(--muted);margin:0 0 8px;">CSV形式（ヘッダー: date, steps, active_minutes, weight）</p>
     <div class="import-area" onclick="document.getElementById('fitnessFile').click()">
       📂 CSVファイルを選択してインポート
@@ -273,6 +285,14 @@
     <button class="btn-action" id="calendarBtn" onclick="connectCalendar()">連携する</button>
   </div>
 
+  <!-- RAG バックフィル -->
+  <div class="settings-section">
+    <h3>🧠 AI記憶のセットアップ</h3>
+    <p style="font-size:13px;color:var(--text-sub);margin:0 0 10px;">過去の日記をAIが検索できるようにベクトル化します。初回のみ実行してください。</p>
+    <div id="backfillStatus" style="font-size:13px;margin-bottom:8px;"></div>
+    <button class="btn-action" id="backfillBtn" onclick="runBackfill()">🔍 過去日記をベクトル化する</button>
+  </div>
+
 </div>
 
 <!-- タブバー -->
@@ -332,7 +352,59 @@ async function exportData(table, format) {
   }
 }
 
-// === フィットネスインポート ===
+// === Google Fit 連携 ===
+async function checkFitConnectStatus() {
+  try {
+    const data = await fetch('/api/calendar?action=status', {
+      headers: { 'Authorization': `Bearer ${AUTH_KEY}` },
+    }).then(r => r.json());
+    const el = document.getElementById('fitConnectStatus');
+    if (data.connected) {
+      el.innerHTML = '✅ Google 認証済み（カレンダー＋フィットネス）';
+      document.getElementById('fitAuthBtn').textContent = '🔄 再認証（スコープ更新）';
+      document.getElementById('fitSyncBtn').style.display = '';
+      document.getElementById('fitSync30Btn').style.display = '';
+    } else {
+      el.innerHTML = '⚠️ 未認証。フィットネス連携にはGoogle認証が必要です。';
+    }
+  } catch (_) {}
+}
+checkFitConnectStatus();
+
+async function connectFitness() {
+  try {
+    const data = await fetch('/api/calendar?action=auth', {
+      headers: { 'Authorization': `Bearer ${AUTH_KEY}` },
+    }).then(r => r.json());
+    if (data.url) window.location.href = data.url;
+  } catch (e) {
+    alert('認証URL取得エラー: ' + e.message);
+  }
+}
+
+async function syncFitness(days = 7) {
+  const el = document.getElementById('fitSyncResult');
+  el.textContent = `🔄 Google Fit から ${days}日分を同期中...`;
+  try {
+    const res = await fetch(`/api/fitness-sync?days=${days}`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${AUTH_KEY}` },
+    });
+    const data = await res.json();
+    if (data.error) {
+      el.textContent = `❌ ${data.error}`;
+      return;
+    }
+    el.textContent = `✅ ${data.synced}件同期完了（${data.period.from} 〜 ${data.period.to}）`;
+    if (data.errors?.length) {
+      el.textContent += ` ⚠️ ${data.errors.join(', ')}`;
+    }
+  } catch (e) {
+    el.textContent = `❌ エラー: ${e.message}`;
+  }
+}
+
+// === フィットネスCSVインポート ===
 async function importFitness(input) {
   const file = input.files[0];
   if (!file) return;
@@ -765,6 +837,36 @@ async function connectCalendar() {
     const data = await apiFetch('/api/calendar?action=auth');
     if (data.url) window.location.href = data.url;
   } catch (e) { showToast(`エラー: ${e.message}`); }
+}
+
+// === RAG バックフィル ===
+async function runBackfill() {
+  const btn = document.getElementById('backfillBtn');
+  const status = document.getElementById('backfillStatus');
+  btn.disabled = true;
+  btn.textContent = '⏳ 処理中...';
+
+  let totalProcessed = 0;
+  let remaining = 1;
+
+  while (remaining > 0) {
+    try {
+      const data = await apiFetch('/api/embed-backfill', { method: 'POST' });
+      totalProcessed += data.processed || 0;
+      remaining = data.remaining || 0;
+      status.textContent = `✅ ${totalProcessed}件処理済み / 残り${remaining}件`;
+      if (data.done) break;
+    } catch (e) {
+      status.textContent = `❌ エラー: ${e.message}`;
+      break;
+    }
+  }
+
+  if (remaining === 0) {
+    status.textContent = `🎉 完了！${totalProcessed}件のベクトル化が終わりました。`;
+  }
+  btn.disabled = false;
+  btn.textContent = '🔍 過去日記をベクトル化する';
 }
 
 // === Toast ===

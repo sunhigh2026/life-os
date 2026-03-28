@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS entries (
   mood INTEGER,
   tag TEXT,
   text TEXT,
+  photo_url TEXT,
   created_at TEXT DEFAULT (datetime('now'))
 );
 
@@ -72,13 +73,17 @@ CREATE TABLE IF NOT EXISTS settings (
   value TEXT
 );
 
--- フィットネス（歩数・運動時間・体重）
+-- フィットネス（歩数・運動時間・体重・カロリー・睡眠）
 CREATE TABLE IF NOT EXISTS fitness (
   id TEXT PRIMARY KEY,
   date TEXT NOT NULL UNIQUE,
   steps INTEGER,
   active_minutes INTEGER,
+  calories INTEGER,
   weight REAL,
+  sleep_minutes INTEGER,
+  raw_json TEXT,
+  synced_at TEXT,
   created_at TEXT DEFAULT (datetime('now'))
 );
 
@@ -86,6 +91,24 @@ CREATE TABLE IF NOT EXISTS fitness (
 CREATE TABLE IF NOT EXISTS book_import_log (
   asin TEXT PRIMARY KEY,
   imported_at TEXT DEFAULT (datetime('now'))
+);
+
+-- チャット履歴（スライディングウィンドウ + RAGエンベディング対象）
+CREATE TABLE IF NOT EXISTS chat_messages (
+  id TEXT PRIMARY KEY,
+  session_id TEXT NOT NULL,
+  role TEXT NOT NULL,        -- 'user' / 'assistant'
+  content TEXT NOT NULL,
+  model TEXT,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+-- エンベディング管理（バックフィル追跡・重複防止）
+CREATE TABLE IF NOT EXISTS embedding_log (
+  source_type TEXT NOT NULL,  -- 'entry' / 'chat' / 'book_note'
+  source_id TEXT NOT NULL,
+  embedded_at TEXT DEFAULT (datetime('now')),
+  PRIMARY KEY (source_type, source_id)
 );
 
 -- インデックス
@@ -96,3 +119,4 @@ CREATE INDEX IF NOT EXISTS idx_books_datetime ON books(datetime);
 CREATE INDEX IF NOT EXISTS idx_book_notes_book_id ON book_notes(book_id);
 CREATE INDEX IF NOT EXISTS idx_fitness_date ON fitness(date);
 CREATE INDEX IF NOT EXISTS idx_todos_parent_id ON todos(parent_id);
+CREATE INDEX IF NOT EXISTS idx_chat_session ON chat_messages(session_id, created_at);

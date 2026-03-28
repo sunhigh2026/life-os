@@ -8,6 +8,8 @@ const AUTH_KEY = 'hidapia2026';
 // ==============================
 let chatRecognition = null;
 let isChatRecording = false;
+// セッションID: ページロードごとに生成し、チャット履歴の文脈管理に使用
+const SESSION_ID = crypto.randomUUID();
 
 // ==============================
 // メッセージ送信
@@ -30,7 +32,7 @@ async function sendMessage() {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${AUTH_KEY}`,
       },
-      body: JSON.stringify({ message }),
+      body: JSON.stringify({ message, session_id: SESSION_ID }),
     });
 
     const data = await res.json();

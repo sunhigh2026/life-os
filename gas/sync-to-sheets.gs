@@ -79,9 +79,9 @@ function syncAll() {
     }
   });
 
-  // フィットネスデータを Drive CSV → Life OS にアップロード
+  // Google Fit API 経由でフィットネスデータを同期（直近2日分）
   try {
-    const fitnessResult = syncFitnessToLifeOS(ss, config);
+    const fitnessResult = syncFitnessFromGoogleFit(config);
     results.push(fitnessResult);
   } catch (e) {
     results.push(`❌ フィットネス同期: ${e.message}`);
@@ -385,6 +385,32 @@ function _sendReport(type) {
 //   FITNESS_ACTIVITY_FOLDER_ID = 1-TVvesMBU1lmvaxYtAz_hIMakxtMwauR
 // ============================================================
 
+// Google Fit API 経由で Life OS にフィットネスデータを同期
+function syncFitnessFromGoogleFit(config) {
+  const url = `${config.lifeOsUrl}/api/fitness-sync?days=2`;
+  const res = UrlFetchApp.fetch(url, {
+    method: 'post',
+    headers: { 'Authorization': `Bearer ${config.authKey}` },
+    muteHttpExceptions: true,
+  });
+
+  if (res.getResponseCode() !== 200) {
+    return `❌ フィットネス同期: HTTP ${res.getResponseCode()} ${res.getContentText().slice(0, 100)}`;
+  }
+
+  const data = JSON.parse(res.getContentText());
+  if (data.error) {
+    return `❌ フィットネス同期: ${data.error}`;
+  }
+
+  let msg = `✅ フィットネス: ${data.synced}件同期（${data.period.from} 〜 ${data.period.to}）`;
+  if (data.errors && data.errors.length) {
+    msg += ` ⚠️ ${data.errors.join(', ')}`;
+  }
+  return msg;
+}
+
+// --- 以下は旧 Health Sync CSV 連携（非推奨） ---
 function syncFitnessToLifeOS(ss, config) {
   const props = PropertiesService.getScriptProperties();
   const stepsFolderId    = props.getProperty('FITNESS_STEPS_FOLDER_ID');

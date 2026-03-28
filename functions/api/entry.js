@@ -53,6 +53,20 @@ export async function onRequestPost({ request, env }) {
     .bind(id, datetime, mood ?? null, tag ?? null, text ?? null)
     .run();
 
+  // エンベディング（失敗してもメイン処理に影響しない）
+  if (text && text.trim()) {
+    try {
+      const { embedAndStore } = await import('./_vectorize.js');
+      await embedAndStore({
+        env,
+        sourceType: 'entry',
+        sourceId: id,
+        text: `${datetime} ${tag ? `[${tag}]` : ''} ${text}`,
+        metadata: { date: datetime.slice(0, 10) },
+      });
+    } catch (_) {}
+  }
+
   return json({ id, datetime, mood, tag, text }, 201);
 }
 
@@ -75,6 +89,22 @@ export async function onRequestPut({ request, env }) {
   await env.DB.prepare(`UPDATE entries SET ${updates.join(', ')} WHERE id = ?`)
     .bind(...values).run();
 
+  // テキストが更新された場合はエンベディングを再生成
+  if (text !== undefined && text.trim()) {
+    try {
+      const { embedAndStore } = await import('./_vectorize.js');
+      const dtVal = datetime || '';
+      const tagVal = tag || '';
+      await embedAndStore({
+        env,
+        sourceType: 'entry',
+        sourceId: id,
+        text: `${dtVal} ${tagVal ? `[${tagVal}]` : ''} ${text}`.trim(),
+        metadata: { date: (dtVal || '').slice(0, 10) },
+      });
+    } catch (_) {}
+  }
+
   return json({ id, updated: true });
 }
 
@@ -85,5 +115,12 @@ export async function onRequestDelete({ request, env }) {
   if (!id) return json({ error: 'id required' }, 400);
 
   await env.DB.prepare(`DELETE FROM entries WHERE id = ?`).bind(id).run();
+
+  // Vectorize からも削除
+  try {
+    const { deleteVector } = await import('./_vectorize.js');
+    await deleteVector({ env, sourceType: 'entry', sourceId: id });
+  } catch (_) {}
+
   return json({ id, deleted: true });
 }

@@ -7,4 +7,14 @@ binding = "DB"
 database_name = "life-os-db"
 database_id = "86f24f9c-4ffc-4194-abcc-33efcb528849"
 
+[[r2_buckets]]
+binding = "PHOTOS"
+bucket_name = "lifeos-photos"
+
+[[vectorize]]
+binding = "VECTORIZE"
+index_name = "lifeos-vectors"
+
 # 環境変数はCloudflare Pagesダッシュボード Settings > Variables and Secrets で設定してください
+# Vectorize インデックスは初回デプロイ前に以下で作成してください:
+#   wrangler vectorize create lifeos-vectors --dimensions=768 --metric=cosine

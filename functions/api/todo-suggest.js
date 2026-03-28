@@ -91,28 +91,15 @@ ${todoList}${calendarInfo}
 {"ids":["選んだtodoのid1","id2","id3"],"comment":"ピアちゃん口調で今日のアドバイスを一言（40字以内）"}`;
 
   try {
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${env.GEMINI_API_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.3, maxOutputTokens: 300 },
-        }),
-      }
-    );
-
-    if (!res.ok) {
-      return json({ suggestions: todos.slice(0, 3).map(t => t.id), message: '今日も一歩ずつがんばろ〜！🐾' });
-    }
-
-    const data = await res.json();
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    // JSON部分を抽出
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      const parsed = JSON.parse(jsonMatch[0]);
+    const { callGemini, extractJson } = await import('./_gemini.js');
+    const responseText = await callGemini({
+      apiKey: env.GEMINI_API_KEY,
+      model: 'lite',
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      generationConfig: { temperature: 0.3, maxOutputTokens: 300 },
+    });
+    const parsed = extractJson(responseText);
+    if (parsed) {
       return json({
         suggestions: parsed.ids || [],
         message: parsed.comment || '今日もがんばろ〜！🐾',
