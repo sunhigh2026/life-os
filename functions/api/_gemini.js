@@ -6,7 +6,7 @@
 
 const MODEL_MAP = {
   lite:  'gemini-1.5-flash',
-  flash: 'gemini-3.1-flash-lite-preview',
+  flash: 'gemini-2.5-flash',
   pro:   'gemini-2.5-pro',
 };
 
