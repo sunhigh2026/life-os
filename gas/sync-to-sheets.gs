@@ -385,9 +385,36 @@ function _sendReport(type) {
 //   FITNESS_ACTIVITY_FOLDER_ID = 1-TVvesMBU1lmvaxYtAz_hIMakxtMwauR
 // ============================================================
 
+// フィットネスのみの軽量同期（数時間おき用）
+function syncFitnessOnly() {
+  const config = getConfig();
+  try {
+    const result = syncFitnessFromGoogleFit(config, 1);
+    Logger.log(result);
+  } catch (e) {
+    Logger.log(`❌ フィットネス同期: ${e.message}`);
+  }
+}
+
+// フィットネス専用トリガー設定（3時間おき）
+function setupFitnessTrigger() {
+  ScriptApp.getProjectTriggers()
+    .filter(t => t.getHandlerFunction() === 'syncFitnessOnly')
+    .forEach(t => ScriptApp.deleteTrigger(t));
+
+  ScriptApp.newTrigger('syncFitnessOnly')
+    .timeBased()
+    .everyHours(3)
+    .create();
+
+  Logger.log('フィットネストリガー設定完了: 3時間おきに自動同期します。');
+}
+
+// ============================================================
+
 // Google Fit API 経由で Life OS にフィットネスデータを同期
-function syncFitnessFromGoogleFit(config) {
-  const url = `${config.lifeOsUrl}/api/fitness-sync?days=2`;
+function syncFitnessFromGoogleFit(config, days = 2) {
+  const url = `${config.lifeOsUrl}/api/fitness-sync?days=${days}`;
   const res = UrlFetchApp.fetch(url, {
     method: 'post',
     headers: { 'Authorization': `Bearer ${config.authKey}` },

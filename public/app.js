@@ -216,7 +216,20 @@ function onTextInput() {
   clearTimeout(aiClassifyTimer);
   const text = document.getElementById('textInput').value.trim();
   if (text.length < 5) return; // 短すぎるテキストは無視
+  showDiaryHintIfLong(text);
   aiClassifyTimer = setTimeout(() => classifyInput(text), 800);
+}
+
+function showDiaryHintIfLong(text) {
+  const hint = document.getElementById('aiClassifyHint');
+  if (!hint) return;
+  if (mode !== 'todo') { hint.style.display = 'none'; return; }
+  if (text.length >= 100) {
+    hint.innerHTML = `<span style="cursor:pointer;" onclick="applyAiClassify('diary')">📔 長文です。日記モードにする？</span>`;
+    hint.style.display = '';
+  } else {
+    hint.style.display = 'none';
+  }
 }
 
 async function classifyInput(text) {

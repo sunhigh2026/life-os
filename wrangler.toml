@@ -8,7 +8,9 @@ database_name = "life-os-db"
 database_id = "86f24f9c-4ffc-4194-abcc-33efcb528849"
 
 [[r2_buckets]]
-binding = "PHOTOS"
+git add .
+git commit -m ""
+git pushbinding = "PHOTOS"
 bucket_name = "lifeos-photos"
 
 [[vectorize]]
