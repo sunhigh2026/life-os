@@ -707,6 +707,10 @@ async function loadFitness() {
       const barData = recent.slice(0, 7).reverse();
       const maxSteps = Math.max(...barData.map(r => r.steps || 0), 1);
       const todayDate = today?.date || '';
+      const stepsWithData = barData.filter(r => r.steps);
+      const avgSteps = stepsWithData.length
+        ? Math.round(stepsWithData.reduce((s, r) => s + r.steps, 0) / stepsWithData.length)
+        : 0;
       const bars = barData.map(r => {
         const pct = Math.max(2, Math.round(((r.steps || 0) / maxSteps) * 48));
         const isTd = r.date === todayDate;
@@ -715,7 +719,7 @@ async function loadFitness() {
           <span class="fitness-bar-date">${r.date.slice(8)}</span>
         </div>`;
       }).join('');
-      el.innerHTML += `<div class="fitness-chart">${bars}</div>`;
+      el.innerHTML += `<div style="font-size:10px;color:var(--text-sub);margin-top:8px;">🚶 歩数${avgSteps ? `<span style="margin-left:6px;">7日平均 <b>${avgSteps.toLocaleString()}</b>歩</span>` : ''}</div><div class="fitness-chart">${bars}</div>`;
     }
 
     // 直近7日の睡眠バーチャート
