@@ -45,15 +45,27 @@ const HEADER_JA = {
 // ============================================================
 function getConfig() {
   const props = PropertiesService.getScriptProperties();
-  const lifeOsUrl = props.getProperty('LIFE_OS_URL');
-  const authKey   = props.getProperty('AUTH_KEY');
-  const sheetId   = props.getProperty('SHEET_ID');
+  const lifeOsUrl      = props.getProperty('LIFE_OS_URL');
+  const authKey        = props.getProperty('AUTH_KEY');
+  const sheetId        = props.getProperty('SHEET_ID');
+  const cfClientId     = props.getProperty('CF_ACCESS_CLIENT_ID')     || '';
+  const cfClientSecret = props.getProperty('CF_ACCESS_CLIENT_SECRET') || '';
 
   if (!lifeOsUrl || !authKey) {
     throw new Error('スクリプトプロパティに LIFE_OS_URL と AUTH_KEY を設定してください');
   }
 
-  return { lifeOsUrl, authKey, sheetId };
+  return { lifeOsUrl, authKey, sheetId, cfClientId, cfClientSecret };
+}
+
+// Cloudflare Access + アプリ認証ヘッダーを生成するヘルパー
+function makeHeaders(config, extra = {}) {
+  return {
+    'Authorization': `Bearer ${config.authKey}`,
+    'CF-Access-Client-Id': config.cfClientId,
+    'CF-Access-Client-Secret': config.cfClientSecret,
+    ...extra,
+  };
 }
 
 // ============================================================
@@ -106,7 +118,7 @@ function writeFitnessSheet(ss, config) {
   const url = `${config.lifeOsUrl}/api/fitness?days=90`;
   const res = UrlFetchApp.fetch(url, {
     method: 'get',
-    headers: { 'Authorization': `Bearer ${config.authKey}` },
+    headers: makeHeaders(config),
     muteHttpExceptions: true,
   });
 
@@ -181,7 +193,7 @@ function fetchTable(table, config) {
   const url = `${config.lifeOsUrl}/api/export?table=${table}&format=json&limit=10000`;
   const options = {
     method: 'get',
-    headers: { 'Authorization': `Bearer ${config.authKey}` },
+    headers: makeHeaders(config),
     muteHttpExceptions: true,
   };
 
@@ -329,7 +341,7 @@ function _sendReport(type) {
   const url = `${config.lifeOsUrl}/api/report?type=${type}`;
   const res = UrlFetchApp.fetch(url, {
     method: 'get',
-    headers: { 'Authorization': `Bearer ${config.authKey}` },
+    headers: makeHeaders(config),
     muteHttpExceptions: true,
   });
 
@@ -417,7 +429,7 @@ function syncFitnessFromGoogleFit(config, days = 2) {
   const url = `${config.lifeOsUrl}/api/fitness-sync?days=${days}`;
   const res = UrlFetchApp.fetch(url, {
     method: 'post',
-    headers: { 'Authorization': `Bearer ${config.authKey}` },
+    headers: makeHeaders(config),
     muteHttpExceptions: true,
   });
 
@@ -500,7 +512,7 @@ function syncFitnessToLifeOS(ss, config) {
     try {
       UrlFetchApp.fetch(`${config.lifeOsUrl}/api/fitness`, {
         method: 'post',
-        headers: { 'Authorization': `Bearer ${config.authKey}`, 'Content-Type': 'application/json' },
+        headers: makeHeaders(config, { 'Content-Type': 'application/json' }),
         payload: JSON.stringify(payload),
         muteHttpExceptions: true,
       });

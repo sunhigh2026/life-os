@@ -125,7 +125,8 @@
       "Bash(curl -s https://generativelanguage.googleapis.com/v1beta/models?key=dummy)",
       "WebFetch(domain:ai.google.dev)",
       "WebFetch(domain:www.buildfastwithai.com)",
-      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8788/)"
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8788/)",
+      "Bash(curl -sv -H \"Authorization: Bearer hidapia2026\" \"https://life-os-7pj.pages.dev/api/export?table=entries&format=json&limit=1\")"
     ]
   }
 }

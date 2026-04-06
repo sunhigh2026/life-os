@@ -64,22 +64,56 @@ function needsRAG(msg) {
   return RAG_KEYWORDS.some(k => msg.includes(k));
 }
 
-// メッセージに応じた日記取得範囲を判定
+// メッセージに応じた日記取得範囲を判定（常に値を返す）
 function detectEntryRange(msg, today) {
-  const WEEK_KEYWORDS = ['今週', '1週間', '一週間', '7日', '七日'];
-  const MONTH_KEYWORDS = ['今月', '1ヶ月', '一ヶ月', '30日', '三十日'];
-  if (WEEK_KEYWORDS.some(k => msg.includes(k))) {
-    const d = new Date(today); d.setDate(d.getDate() - 7);
-    return { from: d.toISOString().slice(0, 10), label: '今週' };
-  }
-  if (MONTH_KEYWORDS.some(k => msg.includes(k))) {
-    const d = new Date(today); d.setDate(d.getDate() - 30);
-    return { from: d.toISOString().slice(0, 10), label: '今月' };
-  }
+  const jst = new Date(today + 'T00:00:00+09:00');
+
   if (msg.includes('今日') || msg.includes('きょう')) {
-    return { from: today, label: '今日' };
+    return { from: today, to: null, label: '今日' };
   }
-  return null;
+  if (msg.includes('昨日') || msg.includes('きのう')) {
+    const d = new Date(jst); d.setDate(d.getDate() - 1);
+    return { from: d.toISOString().slice(0, 10), to: today, label: '昨日' };
+  }
+  if (['今週', '1週間', '一週間', '7日', '七日'].some(k => msg.includes(k))) {
+    const d = new Date(jst); d.setDate(d.getDate() - 7);
+    return { from: d.toISOString().slice(0, 10), to: null, label: '今週' };
+  }
+  if (msg.includes('先週')) {
+    const to = new Date(jst); to.setDate(to.getDate() - 7);
+    const from = new Date(jst); from.setDate(from.getDate() - 14);
+    return { from: from.toISOString().slice(0, 10), to: to.toISOString().slice(0, 10), label: '先週' };
+  }
+  if (['今月', '1ヶ月', '一ヶ月', '30日', '三十日'].some(k => msg.includes(k))) {
+    const d = new Date(jst); d.setDate(d.getDate() - 30);
+    return { from: d.toISOString().slice(0, 10), to: null, label: '今月' };
+  }
+  if (msg.includes('先月')) {
+    const firstOfThisMonth = new Date(jst.getFullYear(), jst.getMonth(), 1);
+    const firstOfLastMonth = new Date(jst.getFullYear(), jst.getMonth() - 1, 1);
+    return { from: firstOfLastMonth.toISOString().slice(0, 10), to: firstOfThisMonth.toISOString().slice(0, 10), label: '先月' };
+  }
+  if (msg.includes('今年')) {
+    return { from: `${jst.getFullYear()}-01-01`, to: null, label: '今年' };
+  }
+  if (msg.includes('去年') || msg.includes('昨年')) {
+    const y = jst.getFullYear() - 1;
+    return { from: `${y}-01-01`, to: `${y + 1}-01-01`, label: '去年' };
+  }
+  // X月（例: 3月、３月）
+  const monthMatch = msg.match(/([0-9１-９]{1,2})月/);
+  if (monthMatch) {
+    const m = parseInt(monthMatch[1].replace(/[１-９]/g, c => String(c.charCodeAt(0) - 0xFF10)));
+    if (m >= 1 && m <= 12) {
+      const y = (m > jst.getMonth() + 1) ? jst.getFullYear() - 1 : jst.getFullYear();
+      const from = `${y}-${String(m).padStart(2, '0')}-01`;
+      const toDate = new Date(y, m, 1);
+      return { from, to: toDate.toISOString().slice(0, 10), label: `${m}月` };
+    }
+  }
+  // デフォルト: 直近2日
+  const d = new Date(jst); d.setDate(d.getDate() - 2);
+  return { from: d.toISOString().slice(0, 10), to: null, label: '直近2日' };
 }
 
 // POST /api/chat
@@ -96,9 +130,9 @@ export async function onRequestPost({ request, env }) {
 
   // メッセージに応じた日記取得範囲
   const entryRange = detectEntryRange(message, today);
-  const entryQuery = entryRange
-    ? env.DB.prepare(`SELECT datetime, mood, tag, text FROM entries WHERE datetime >= ? ORDER BY datetime DESC LIMIT 50`).bind(entryRange.from).all()
-    : env.DB.prepare(`SELECT datetime, mood, tag, text FROM entries ORDER BY datetime DESC LIMIT 3`).all();
+  const entryQuery = entryRange.to
+    ? env.DB.prepare(`SELECT datetime, mood, tag, text FROM entries WHERE datetime >= ? AND datetime < ? ORDER BY datetime DESC LIMIT 100`).bind(entryRange.from, entryRange.to).all()
+    : env.DB.prepare(`SELECT datetime, mood, tag, text FROM entries WHERE datetime >= ? ORDER BY datetime DESC LIMIT 50`).bind(entryRange.from).all();
 
   // コンテキスト + キャラ設定を並行取得
   const [
@@ -238,7 +272,7 @@ export async function onRequestPost({ request, env }) {
   const contextText = `
 今日の日付: ${today}
 
-最近の日記（直近3件）:
+${entryRange.label}の日記:
 ${recentEntries.map(e => `- ${e.datetime} [mood:${e.mood}] [tag:${e.tag}] ${e.text}`).join('\n') || 'なし'}
 
 未完了ToDo:
