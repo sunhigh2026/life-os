@@ -100,7 +100,6 @@
 <div id="toast"></div>
 
 <script>
-const AUTH_KEY = 'hidapia2026';
 const MOODS = { 1: '😢', 2: '😞', 3: '😐', 4: '🙂', 5: '😊', 6: '🤩' };
 let editMood = null;
 let allEntries = [];
@@ -117,8 +116,12 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 async function apiFetch(path, options = {}) {
-  const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${AUTH_KEY}`, ...(options.headers || {}) };
+  const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
   const res = await fetch(path, { ...options, headers });
+  if (res.status === 401) {
+    window.location.href = `/login.html?from=${encodeURIComponent(location.pathname + location.search)}`;
+    return null;
+  }
   if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `HTTP ${res.status}`);
   return res.json();
 }
@@ -357,9 +360,7 @@ async function processImage(file) {
 }
 
 async function loadAuthImage(imgEl, key) {
-  const res = await fetch(`/api/photos/${key}`, {
-    headers: { 'Authorization': `Bearer ${AUTH_KEY}` },
-  });
+  const res = await fetch(`/api/photos/${key}`);
   if (res.ok) {
     const blob = await res.blob();
     imgEl.src = URL.createObjectURL(blob);
@@ -430,7 +431,6 @@ async function savePhotoChanges(entryId) {
     formData.append('photo', editPhotoBlob, 'photo.webp');
     const res = await fetch(`/api/entry-photo?id=${entryId}`, {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${AUTH_KEY}` },
       body: formData,
     });
     if (!res.ok) {
@@ -441,7 +441,6 @@ async function savePhotoChanges(entryId) {
     // 写真が削除された（editPhotoBlobもeditPhotoKeyもnull）
     const res = await fetch(`/api/entry-photo?id=${entryId}`, {
       method: 'DELETE',
-      headers: { 'Authorization': `Bearer ${AUTH_KEY}` },
     });
     // 写真がなかった場合の404は無視
   }

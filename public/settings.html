@@ -319,11 +319,13 @@
 <div id="toast"></div>
 
 <script>
-const AUTH_KEY = 'hidapia2026';
-
 async function apiFetch(path, options = {}) {
-  const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${AUTH_KEY}`, ...(options.headers || {}) };
+  const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
   const res = await fetch(path, { ...options, headers });
+  if (res.status === 401) {
+    window.location.href = `/login.html?from=${encodeURIComponent(location.pathname + location.search)}`;
+    return null;
+  }
   if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `HTTP ${res.status}`);
   return res.json();
 }
@@ -336,9 +338,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // === エクスポート ===
 async function exportData(table, format) {
   try {
-    const res = await fetch(`/api/export?table=${table}&format=${format}&limit=10000`, {
-      headers: { 'Authorization': `Bearer ${AUTH_KEY}` },
-    });
+    const res = await fetch(`/api/export?table=${table}&format=${format}&limit=10000`);
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -355,9 +355,7 @@ async function exportData(table, format) {
 // === Google Fit 連携 ===
 async function checkFitConnectStatus() {
   try {
-    const data = await fetch('/api/calendar?action=status', {
-      headers: { 'Authorization': `Bearer ${AUTH_KEY}` },
-    }).then(r => r.json());
+    const data = await fetch('/api/calendar?action=status').then(r => r.json());
     const el = document.getElementById('fitConnectStatus');
     if (data.connected) {
       el.innerHTML = '✅ Google 認証済み（カレンダー＋フィットネス）';
@@ -373,9 +371,7 @@ checkFitConnectStatus();
 
 async function connectFitness() {
   try {
-    const data = await fetch('/api/calendar?action=auth', {
-      headers: { 'Authorization': `Bearer ${AUTH_KEY}` },
-    }).then(r => r.json());
+    const data = await fetch('/api/calendar?action=auth').then(r => r.json());
     if (data.url) window.location.href = data.url;
   } catch (e) {
     alert('認証URL取得エラー: ' + e.message);
@@ -388,7 +384,6 @@ async function syncFitness(days = 7) {
   try {
     const res = await fetch(`/api/fitness-sync?days=${days}`, {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${AUTH_KEY}` },
     });
     const data = await res.json();
     if (data.error) {
@@ -415,7 +410,7 @@ async function importFitness(input) {
     const text = await file.text();
     const res = await fetch('/api/fitness-import', {
       method: 'POST',
-      headers: { 'Content-Type': 'text/csv', 'Authorization': `Bearer ${AUTH_KEY}` },
+      headers: { 'Content-Type': 'text/csv' },
       body: text,
     });
     const data = await res.json();
@@ -443,7 +438,7 @@ async function importAudible(input) {
     const text = await file.text();
     const res = await fetch('/api/book-import', {
       method: 'POST',
-      headers: { 'Content-Type': 'text/csv', 'Authorization': `Bearer ${AUTH_KEY}` },
+      headers: { 'Content-Type': 'text/csv' },
       body: text,
     });
     const data = await res.json();

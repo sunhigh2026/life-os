@@ -129,7 +129,6 @@
 <div id="toast"></div>
 
 <script>
-const AUTH_KEY = 'hidapia2026';
 let currentView = 'smart';
 let allTodos = [];
 let aiSuggestions = null;
@@ -142,8 +141,12 @@ let expandedParents = new Set(); // 展開中の親タスクID
 document.addEventListener('DOMContentLoaded', () => load());
 
 async function apiFetch(path, options = {}) {
-  const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${AUTH_KEY}`, ...(options.headers || {}) };
+  const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
   const res = await fetch(path, { ...options, headers });
+  if (res.status === 401) {
+    window.location.href = `/login.html?from=${encodeURIComponent(location.pathname + location.search)}`;
+    return null;
+  }
   if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `HTTP ${res.status}`);
   return res.json();
 }

@@ -1,9 +1,4 @@
 // ==============================
-// 設定
-// ==============================
-const AUTH_KEY = 'hidapia2026';
-
-// ==============================
 // 状態
 // ==============================
 let chatRecognition = null;
@@ -30,10 +25,15 @@ async function sendMessage() {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${AUTH_KEY}`,
       },
       body: JSON.stringify({ message, session_id: SESSION_ID }),
     });
+
+    if (res.status === 401) {
+      removeMessage(thinkingId);
+      window.location.href = `/login.html?from=${encodeURIComponent(location.pathname)}`;
+      return;
+    }
 
     const data = await res.json();
     removeMessage(thinkingId);
@@ -128,9 +128,7 @@ function toggleChatVoice() {
 // ==============================
 async function initCharacter() {
   try {
-    const res = await fetch('/api/settings?keys=char_name,char_icon,char_greeting', {
-      headers: { 'Authorization': `Bearer ${AUTH_KEY}` },
-    });
+    const res = await fetch('/api/settings?keys=char_name,char_icon,char_greeting');
     if (!res.ok) return;
     const s = await res.json();
 

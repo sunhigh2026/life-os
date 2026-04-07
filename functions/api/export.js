@@ -1,18 +1,23 @@
 // GET /api/export?table=entries|todos|books&format=csv|json
+const TABLE_QUERIES = {
+  entries:    'SELECT * FROM entries    ORDER BY created_at DESC LIMIT ?',
+  todos:      'SELECT * FROM todos      ORDER BY created_at DESC LIMIT ?',
+  books:      'SELECT * FROM books      ORDER BY created_at DESC LIMIT ?',
+  book_notes: 'SELECT * FROM book_notes ORDER BY created_at DESC LIMIT ?',
+};
+
 export async function onRequestGet({ request, env }) {
   const url = new URL(request.url);
   const table = url.searchParams.get('table') || 'entries';
   const format = url.searchParams.get('format') || 'json';
-  const limit = parseInt(url.searchParams.get('limit') || '10000');
+  const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') || '10000') || 10000, 1), 10000);
 
-  const allowed = ['entries', 'todos', 'books', 'book_notes'];
-  if (!allowed.includes(table)) {
+  const query = TABLE_QUERIES[table];
+  if (!query) {
     return new Response(JSON.stringify({ error: 'invalid table' }), { status: 400 });
   }
 
-  const { results } = await env.DB.prepare(
-    `SELECT * FROM ${table} ORDER BY created_at DESC LIMIT ?`
-  ).bind(limit).all();
+  const { results } = await env.DB.prepare(query).bind(limit).all();
 
   if (format === 'json') {
     return new Response(JSON.stringify({ table, count: results.length, data: results }), {

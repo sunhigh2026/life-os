@@ -1,9 +1,4 @@
 // ==============================
-// 設定: デプロイ後に自分のキーに変更してください
-// ==============================
-const AUTH_KEY = 'hidapia2026';
-
-// ==============================
 // 状態
 // ==============================
 let mode = 'diary'; // 'diary' | 'todo'
@@ -38,10 +33,13 @@ function apiUrl(path) { return path; }
 async function apiFetch(path, options = {}) {
   const headers = {
     'Content-Type': 'application/json',
-    'Authorization': `Bearer ${AUTH_KEY}`,
     ...(options.headers || {}),
   };
   const res = await fetch(apiUrl(path), { ...options, headers });
+  if (res.status === 401) {
+    window.location.href = `/login.html?from=${encodeURIComponent(location.pathname + location.search)}`;
+    return null;
+  }
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.error || `HTTP ${res.status}`);
@@ -722,9 +720,9 @@ async function loadFitness() {
       const dayLabel = isToday ? `${mm}/${dd}（${dow}）今日` : `${mm}/${dd}（${dow}）`;
 
       // 歩数に応じた背景色（5000未満:デフォルト / 5000+:黄 / 8000+:黄緑 / 10000+:緑）
-      const stepBg   = steps >= 10000 ? '#4ade80' : steps >= 8000 ? '#bef264' : steps >= 5000 ? '#fde047' : 'var(--primary-light)';
-      const stepText = steps >= 5000  ? '#14532d' : 'var(--primary-dark)';
-      const stepBar  = steps >= 10000 ? '#16a34a' : steps >= 8000 ? '#65a30d' : steps >= 5000 ? '#ca8a04' : 'var(--primary-dark)';
+      const stepBg   = steps >= 10000 ? '#fbcfe8' : steps >= 8000 ? '#fed7aa' : steps >= 5000 ? '#fef08a' : 'var(--primary-light)';
+      const stepText = steps >= 10000 ? '#9d174d' : steps >= 8000 ? '#9a3412' : steps >= 5000 ? '#854d0e' : 'var(--primary-dark)';
+      const stepBar  = steps >= 10000 ? '#ec4899' : steps >= 8000 ? '#f97316' : steps >= 5000 ? '#eab308' : 'var(--primary-dark)';
 
       return `<div class="fitness-slide">
         <div class="fitness-main">
@@ -1012,9 +1010,7 @@ async function processImage(file) {
 }
 
 async function loadAuthImage(imgEl, key) {
-  const res = await fetch(`/api/photos/${key}`, {
-    headers: { 'Authorization': `Bearer ${AUTH_KEY}` },
-  });
+  const res = await fetch(`/api/photos/${key}`);
   if (res.ok) {
     const blob = await res.blob();
     imgEl.src = URL.createObjectURL(blob);
