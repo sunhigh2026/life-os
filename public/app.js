@@ -644,20 +644,32 @@ function renderStreak(data, today) {
 // フィットネス
 // ==============================
 
-// バーチャートのハイライトを更新（スライド連動）
-function updateFitnessNav(idx) {
-  const chart = document.getElementById('fitnessNavChart');
-  if (!chart) return;
-  chart.querySelectorAll('.fitness-bar-fill').forEach((bar, i) => {
-    bar.classList.toggle('today', i === idx);
-  });
-}
-
-// バーをクリックしてスライド移動（onclick から呼ぶ）
+// スライドを指定インデックスに移動（バークリック・ボタンから呼ぶ）
 function scrollFitnessSlide(idx) {
   const slider = document.getElementById('fitnessSlider');
   if (!slider) return;
-  slider.scrollTo({ left: idx * slider.offsetWidth, behavior: 'smooth' });
+  const total = parseInt(slider.dataset.total || '7');
+  const clamped = Math.max(0, Math.min(total - 1, idx));
+  slider.dataset.idx = clamped;
+  slider.scrollTo({ left: clamped * slider.offsetWidth, behavior: 'smooth' });
+  // ボタンの活性制御
+  const prev = document.getElementById('fitnessPrev');
+  const next = document.getElementById('fitnessNext');
+  if (prev) prev.disabled = clamped === 0;
+  if (next) next.disabled = clamped === total - 1;
+  // バーハイライト同期（barData は古い順なので末尾が idx=0）
+  const navChart = document.getElementById('fitnessNavChart');
+  if (navChart) {
+    const bars = navChart.querySelectorAll('.fitness-bar-fill');
+    const barIdx = bars.length - 1 - clamped;
+    bars.forEach((bar, i) => bar.classList.toggle('today', i === barIdx));
+  }
+}
+
+function moveFitnessSlide(dir) {
+  const slider = document.getElementById('fitnessSlider');
+  if (!slider) return;
+  scrollFitnessSlide(parseInt(slider.dataset.idx || '0') + dir);
 }
 
 async function loadFitness() {
@@ -703,19 +715,24 @@ async function loadFitness() {
       if (weight) metrics.push(`<div class="fitness-metric"><span class="fitness-metric-icon">⚖️</span><span class="fitness-metric-val">${weight}</span><span class="fitness-metric-unit">kg</span></div>`);
       if (sleepStr) metrics.push(`<div class="fitness-metric"><span class="fitness-metric-icon">😴</span><span class="fitness-metric-val">${sleepStr}</span></div>`);
 
+      const DOW = ['日', '月', '火', '水', '木', '金', '土'];
+      const dow = DOW[new Date(r.date + 'T12:00:00').getDay()];
       const mm = r.date.slice(5, 7).replace(/^0/, '');
       const dd = r.date.slice(8).replace(/^0/, '');
-      const dayLabel = isToday ? `${mm}/${dd}（今日）` : `${mm}/${dd}`;
+      const dayLabel = isToday ? `${mm}/${dd}（${dow}）今日` : `${mm}/${dd}（${dow}）`;
+
+      // 歩数に応じた色（5000未満:デフォルト / 5000+:黄 / 8000+:黄緑 / 10000+:緑）
+      const stepColor = steps >= 10000 ? '#16a34a' : steps >= 8000 ? '#65a30d' : steps >= 5000 ? '#ca8a04' : 'var(--primary-dark)';
 
       return `<div class="fitness-slide">
         <div class="fitness-main">
           <div class="fitness-steps">
-            <span class="fitness-steps-num">${steps ? steps.toLocaleString() : '—'}</span>
+            <span class="fitness-steps-num" style="color:${stepColor};">${steps ? steps.toLocaleString() : '—'}</span>
             <span class="fitness-steps-label">歩</span>
-            ${steps ? `<div style="width:100%;height:4px;background:var(--border);border-radius:2px;margin-top:6px;overflow:hidden;"><div style="height:100%;width:${stepPct}%;background:var(--primary);border-radius:2px;"></div></div><span style="font-size:9px;color:var(--text-sub);margin-top:2px;">${stepPct}%</span>` : ''}
+            ${steps ? `<div style="width:100%;height:4px;background:var(--border);border-radius:2px;margin-top:6px;overflow:hidden;"><div style="height:100%;width:${stepPct}%;background:${stepColor};border-radius:2px;"></div></div><span style="font-size:9px;color:var(--text-sub);margin-top:2px;">${stepPct}%</span>` : ''}
           </div>
           <div class="fitness-details">
-            <div style="font-size:11px;font-weight:600;color:var(--text-sub);margin-bottom:4px;">${dayLabel}</div>
+            <div style="font-size:14px;font-weight:700;color:var(--text-main);margin-bottom:4px;">${dayLabel}</div>
             ${metrics.length ? `<div style="display:flex;flex-wrap:wrap;gap:8px;">${metrics.join('')}</div>` : '<div style="font-size:12px;color:var(--text-sub);">データなし</div>'}
           </div>
         </div>
@@ -734,33 +751,14 @@ async function loadFitness() {
     }).join('');
 
     el.innerHTML = `
-      <div class="fitness-slider" id="fitnessSlider">${slides}</div>
+      <div style="display:flex;align-items:center;">
+        <button id="fitnessPrev" class="fitness-nav-btn" onclick="moveFitnessSlide(-1)" disabled>‹</button>
+        <div class="fitness-slider" id="fitnessSlider" data-idx="0" data-total="${slideData.length}">${slides}</div>
+        <button id="fitnessNext" class="fitness-nav-btn" onclick="moveFitnessSlide(1)">›</button>
+      </div>
       <div style="font-size:10px;color:var(--text-sub);padding:4px 16px 2px;">🚶 歩数${avgSteps ? `<span style="margin-left:6px;">7日平均 <b>${avgSteps.toLocaleString()}</b>歩</span>` : ''}</div>
       <div class="fitness-chart" id="fitnessNavChart">${navBars}</div>
     `;
-
-    // スクロール連動：スライド位置に合わせてバーをハイライト
-    const slider = document.getElementById('fitnessSlider');
-    const syncNav = () => {
-      const idx = Math.round(slider.scrollLeft / slider.offsetWidth);
-      const barIdx = barData.length - 1 - idx;
-      document.getElementById('fitnessNavChart')?.querySelectorAll('.fitness-bar-fill').forEach((bar, i) => {
-        bar.classList.toggle('today', i === barIdx);
-      });
-    };
-    slider.addEventListener('scroll', syncNav, { passive: true });
-
-    // JS スワイプ補助（CSS scroll-snap が効かない環境向け）
-    let _swipeStartX = 0;
-    slider.addEventListener('pointerdown', e => { _swipeStartX = e.clientX; }, { passive: true });
-    slider.addEventListener('pointerup', e => {
-      const diff = _swipeStartX - e.clientX;
-      if (Math.abs(diff) > 40) {
-        const cur = Math.round(slider.scrollLeft / slider.offsetWidth);
-        const next = diff > 0 ? Math.min(cur + 1, slideData.length - 1) : Math.max(cur - 1, 0);
-        scrollFitnessSlide(next);
-      }
-    }, { passive: true });
 
   } catch (_) {}
 }

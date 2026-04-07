@@ -561,6 +561,19 @@ input[type="datetime-local"] { flex: 1; }
   color: var(--text-sub);
 }
 /* フィットネス スライダー */
+.fitness-nav-btn {
+  background: none;
+  border: none;
+  font-size: 22px;
+  color: var(--text-sub);
+  cursor: pointer;
+  padding: 4px 6px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.fitness-nav-btn:disabled { opacity: 0.15; cursor: default; }
+.fitness-nav-btn:not(:disabled):active { color: var(--primary); }
+
 .fitness-slider {
   display: flex;
   overflow-x: auto;
