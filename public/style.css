@@ -560,6 +560,23 @@ input[type="datetime-local"] { flex: 1; }
   font-size: 9px;
   color: var(--text-sub);
 }
+/* フィットネス スライダー */
+.fitness-slider {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+.fitness-slider::-webkit-scrollbar { display: none; }
+.fitness-slide {
+  min-width: 100%;
+  scroll-snap-align: start;
+  box-sizing: border-box;
+  padding: 0 0 8px;
+}
+
 .fitness-metric {
   display: flex;
   align-items: baseline;

@@ -643,101 +643,113 @@ function renderStreak(data, today) {
 // ==============================
 // フィットネス
 // ==============================
+
+// バーチャートのハイライトを更新（スライド連動）
+function updateFitnessNav(idx) {
+  const chart = document.getElementById('fitnessNavChart');
+  if (!chart) return;
+  chart.querySelectorAll('.fitness-bar-fill').forEach((bar, i) => {
+    bar.classList.toggle('today', i === idx);
+  });
+}
+
+// バーをクリックしてスライド移動（onclick から呼ぶ）
+function scrollFitnessSlide(idx) {
+  const slider = document.getElementById('fitnessSlider');
+  if (!slider) return;
+  slider.scrollTo({ left: idx * slider.offsetWidth, behavior: 'smooth' });
+}
+
 async function loadFitness() {
   try {
     const data = await apiFetch('/api/fitness?days=7');
     const section = document.getElementById('sectionFitness');
     const el = document.getElementById('fitnessInfo');
-    const today = data.today;
+    const todayData = data.today;
     const recent = data.fitness || [];
     if (!recent.length) return;
 
     section.style.display = '';
 
-    const latest = today || recent[0];
-    const isToday = !!today;
-    const dateLabel = isToday ? '' : `<span style="font-size:11px;color:var(--text-sub);">(${latest.date.slice(5).replace('-', '/')} 時点)</span>`;
+    // 今日〜6日前の順に並べる（index 0 = 今日）
+    const todayDate = todayData?.date || recent[0]?.date || '';
+    const barData = recent.slice(0, 7).reverse(); // 古い順（グラフ用）
+    const slideData = [...barData].reverse();      // 新しい順（スライド用、index 0 = 今日）
 
-    const steps = latest?.steps || 0;
-    const activeMin = latest?.active_minutes || 0;
-    const calories = latest?.calories || 0;
-    const sleepMin = latest?.sleep_minutes || 0;
-    const latestWeight = recent.find(r => r.weight);
-    const weight = latestWeight?.weight || null;
+    // 7日平均歩数
+    const stepsWithData = barData.filter(r => r.steps);
+    const avgSteps = stepsWithData.length
+      ? Math.round(stepsWithData.reduce((s, r) => s + r.steps, 0) / stepsWithData.length)
+      : 0;
 
-    // ステップ目標10000で達成率
+    // スライド HTML を生成
     const goalSteps = 10000;
-    const stepPct = Math.min(100, Math.round((steps / goalSteps) * 100));
+    const slides = slideData.map(r => {
+      const steps = r.steps || 0;
+      const activeMin = r.active_minutes || 0;
+      const calories = r.calories || 0;
+      const sleepMin = r.sleep_minutes || 0;
+      const weight = r.weight || null;
+      const isToday = r.date === todayDate;
 
-    // 睡眠時間フォーマット
-    const sleepHr = Math.floor(sleepMin / 60);
-    const sleepRem = sleepMin % 60;
-    const sleepStr = sleepMin ? `${sleepHr}時間${sleepRem ? sleepRem + '分' : ''}` : '';
+      const stepPct = Math.min(100, Math.round((steps / goalSteps) * 100));
+      const sleepHr = Math.floor(sleepMin / 60);
+      const sleepRem = sleepMin % 60;
+      const sleepStr = sleepMin ? `${sleepHr}時間${sleepRem ? sleepRem + '分' : ''}` : '';
 
-    // メトリクスカード
-    const metrics = [];
-    if (steps) metrics.push(`<div class="fitness-metric"><span class="fitness-metric-icon">🚶</span><span class="fitness-metric-val">${steps.toLocaleString()}</span><span class="fitness-metric-unit">歩</span></div>`);
-    if (activeMin) metrics.push(`<div class="fitness-metric"><span class="fitness-metric-icon">⏱</span><span class="fitness-metric-val">${activeMin}</span><span class="fitness-metric-unit">分</span></div>`);
-    if (calories) metrics.push(`<div class="fitness-metric"><span class="fitness-metric-icon">🔥</span><span class="fitness-metric-val">${calories.toLocaleString()}</span><span class="fitness-metric-unit">kcal</span></div>`);
-    if (weight) metrics.push(`<div class="fitness-metric"><span class="fitness-metric-icon">⚖️</span><span class="fitness-metric-val">${weight}</span><span class="fitness-metric-unit">kg</span></div>`);
-    if (sleepStr) metrics.push(`<div class="fitness-metric"><span class="fitness-metric-icon">😴</span><span class="fitness-metric-val">${sleepStr}</span></div>`);
+      const metrics = [];
+      if (activeMin) metrics.push(`<div class="fitness-metric"><span class="fitness-metric-icon">⏱</span><span class="fitness-metric-val">${activeMin}</span><span class="fitness-metric-unit">分</span></div>`);
+      if (calories) metrics.push(`<div class="fitness-metric"><span class="fitness-metric-icon">🔥</span><span class="fitness-metric-val">${calories.toLocaleString()}</span><span class="fitness-metric-unit">kcal</span></div>`);
+      if (weight) metrics.push(`<div class="fitness-metric"><span class="fitness-metric-icon">⚖️</span><span class="fitness-metric-val">${weight}</span><span class="fitness-metric-unit">kg</span></div>`);
+      if (sleepStr) metrics.push(`<div class="fitness-metric"><span class="fitness-metric-icon">😴</span><span class="fitness-metric-val">${sleepStr}</span></div>`);
 
-    // メインレイアウト
-    el.innerHTML = `
-      <div class="fitness-main">
-        <div class="fitness-steps">
-          <span class="fitness-steps-num">${steps ? steps.toLocaleString() : '—'}</span>
-          <span class="fitness-steps-label">歩 ${dateLabel}</span>
-          ${steps ? `<div style="width:100%;height:4px;background:var(--border);border-radius:2px;margin-top:6px;overflow:hidden;">
-            <div style="height:100%;width:${stepPct}%;background:var(--primary);border-radius:2px;"></div>
+      const mm = r.date.slice(5, 7).replace(/^0/, '');
+      const dd = r.date.slice(8).replace(/^0/, '');
+      const dayLabel = isToday ? `${mm}/${dd}（今日）` : `${mm}/${dd}`;
+
+      return `<div class="fitness-slide">
+        <div class="fitness-main">
+          <div class="fitness-steps">
+            <span class="fitness-steps-num">${steps ? steps.toLocaleString() : '—'}</span>
+            <span class="fitness-steps-label">歩</span>
+            ${steps ? `<div style="width:100%;height:4px;background:var(--border);border-radius:2px;margin-top:6px;overflow:hidden;"><div style="height:100%;width:${stepPct}%;background:var(--primary);border-radius:2px;"></div></div><span style="font-size:9px;color:var(--text-sub);margin-top:2px;">${stepPct}%</span>` : ''}
           </div>
-          <span style="font-size:9px;color:var(--text-sub);margin-top:2px;">${stepPct}% / 目標1万歩</span>` : ''}
+          <div class="fitness-details">
+            <div style="font-size:11px;font-weight:600;color:var(--text-sub);margin-bottom:4px;">${dayLabel}</div>
+            ${metrics.length ? `<div style="display:flex;flex-wrap:wrap;gap:8px;">${metrics.join('')}</div>` : '<div style="font-size:12px;color:var(--text-sub);">データなし</div>'}
+          </div>
         </div>
-        <div class="fitness-details">
-          ${metrics.length > 1 ? `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px;">
-            ${metrics.slice(1).join('')}
-          </div>` : ''}
-          ${!metrics.length ? '<div class="fitness-detail-row" style="color:var(--text-sub);">データなし</div>' : ''}
-        </div>
-      </div>
+      </div>`;
+    }).join('');
+
+    // ナビゲーターバーチャート（古い順、index 0 = 一番古い日、一番右 = 今日）
+    const maxSteps = Math.max(...barData.map(r => r.steps || 0), 1);
+    const navBars = barData.map((r, i) => {
+      const pct = Math.max(2, Math.round(((r.steps || 0) / maxSteps) * 48));
+      const navIdx = slideData.length - 1 - i; // スライドのインデックスに変換
+      return `<div class="fitness-bar-group" onclick="scrollFitnessSlide(${navIdx})" style="cursor:pointer;">
+        <div class="fitness-bar-fill${r.date === todayDate ? ' today' : ''}" style="height:${pct}px;"></div>
+        <span class="fitness-bar-date">${r.date.slice(8)}</span>
+      </div>`;
+    }).join('');
+
+    el.innerHTML = `
+      <div class="fitness-slider" id="fitnessSlider">${slides}</div>
+      <div style="font-size:10px;color:var(--text-sub);padding:4px 16px 2px;">🚶 歩数${avgSteps ? `<span style="margin-left:6px;">7日平均 <b>${avgSteps.toLocaleString()}</b>歩</span>` : ''}</div>
+      <div class="fitness-chart" id="fitnessNavChart">${navBars}</div>
     `;
 
-    // 直近7日の歩数バーチャート
-    if (recent.length >= 2) {
-      const barData = recent.slice(0, 7).reverse();
-      const maxSteps = Math.max(...barData.map(r => r.steps || 0), 1);
-      const todayDate = today?.date || '';
-      const stepsWithData = barData.filter(r => r.steps);
-      const avgSteps = stepsWithData.length
-        ? Math.round(stepsWithData.reduce((s, r) => s + r.steps, 0) / stepsWithData.length)
-        : 0;
-      const bars = barData.map(r => {
-        const pct = Math.max(2, Math.round(((r.steps || 0) / maxSteps) * 48));
-        const isTd = r.date === todayDate;
-        return `<div class="fitness-bar-group">
-          <div class="fitness-bar-fill${isTd ? ' today' : ''}" style="height:${pct}px;"></div>
-          <span class="fitness-bar-date">${r.date.slice(8)}</span>
-        </div>`;
-      }).join('');
-      el.innerHTML += `<div style="font-size:10px;color:var(--text-sub);margin-top:8px;">🚶 歩数${avgSteps ? `<span style="margin-left:6px;">7日平均 <b>${avgSteps.toLocaleString()}</b>歩</span>` : ''}</div><div class="fitness-chart">${bars}</div>`;
-    }
+    // スクロール連動：スライド位置に合わせてバーをハイライト
+    const slider = document.getElementById('fitnessSlider');
+    slider.addEventListener('scroll', () => {
+      const idx = Math.round(slider.scrollLeft / slider.offsetWidth);
+      // barData は古い順なので、スライド idx 0（今日）= barData の末尾
+      const barIdx = barData.length - 1 - idx;
+      document.getElementById('fitnessNavChart')?.querySelectorAll('.fitness-bar-fill').forEach((bar, i) => {
+        bar.classList.toggle('today', i === barIdx);
+      });
+    }, { passive: true });
 
-    // 直近7日の睡眠バーチャート
-    const sleepData = recent.filter(r => r.sleep_minutes).slice(0, 7).reverse();
-    if (sleepData.length >= 2) {
-      const maxSleep = Math.max(...sleepData.map(r => r.sleep_minutes || 0), 1);
-      const todayDate = today?.date || '';
-      const sleepBars = sleepData.map(r => {
-        const pct = Math.max(2, Math.round(((r.sleep_minutes || 0) / maxSleep) * 48));
-        const isTd = r.date === todayDate;
-        const hrs = Math.floor((r.sleep_minutes || 0) / 60);
-        return `<div class="fitness-bar-group">
-          <div class="fitness-bar-fill sleep${isTd ? ' today' : ''}" style="height:${pct}px;" title="${hrs}h"></div>
-          <span class="fitness-bar-date">${r.date.slice(8)}</span>
-        </div>`;
-      }).join('');
-      el.innerHTML += `<div style="font-size:10px;color:var(--text-sub);margin-top:8px;">😴 睡眠</div><div class="fitness-chart">${sleepBars}</div>`;
-    }
   } catch (_) {}
 }
 
