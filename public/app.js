@@ -721,15 +721,17 @@ async function loadFitness() {
       const dd = r.date.slice(8).replace(/^0/, '');
       const dayLabel = isToday ? `${mm}/${dd}（${dow}）今日` : `${mm}/${dd}（${dow}）`;
 
-      // 歩数に応じた色（5000未満:デフォルト / 5000+:黄 / 8000+:黄緑 / 10000+:緑）
-      const stepColor = steps >= 10000 ? '#16a34a' : steps >= 8000 ? '#65a30d' : steps >= 5000 ? '#ca8a04' : 'var(--primary-dark)';
+      // 歩数に応じた背景色（5000未満:デフォルト / 5000+:黄 / 8000+:黄緑 / 10000+:緑）
+      const stepBg   = steps >= 10000 ? '#4ade80' : steps >= 8000 ? '#bef264' : steps >= 5000 ? '#fde047' : 'var(--primary-light)';
+      const stepText = steps >= 5000  ? '#14532d' : 'var(--primary-dark)';
+      const stepBar  = steps >= 10000 ? '#16a34a' : steps >= 8000 ? '#65a30d' : steps >= 5000 ? '#ca8a04' : 'var(--primary-dark)';
 
       return `<div class="fitness-slide">
         <div class="fitness-main">
-          <div class="fitness-steps">
-            <span class="fitness-steps-num" style="color:${stepColor};">${steps ? steps.toLocaleString() : '—'}</span>
-            <span class="fitness-steps-label">歩</span>
-            ${steps ? `<div style="width:100%;height:4px;background:var(--border);border-radius:2px;margin-top:6px;overflow:hidden;"><div style="height:100%;width:${stepPct}%;background:${stepColor};border-radius:2px;"></div></div><span style="font-size:9px;color:var(--text-sub);margin-top:2px;">${stepPct}%</span>` : ''}
+          <div class="fitness-steps" style="background:${stepBg};">
+            <span class="fitness-steps-num" style="color:${stepText};">${steps ? steps.toLocaleString() : '—'}</span>
+            <span class="fitness-steps-label" style="color:${stepText};opacity:0.7;">歩</span>
+            ${steps ? `<div style="width:100%;height:4px;background:rgba(0,0,0,0.15);border-radius:2px;margin-top:6px;overflow:hidden;"><div style="height:100%;width:${stepPct}%;background:${stepBar};border-radius:2px;"></div></div><span style="font-size:9px;color:${stepText};opacity:0.7;margin-top:2px;">${stepPct}%</span>` : ''}
           </div>
           <div class="fitness-details">
             <div style="font-size:14px;font-weight:700;color:var(--text-main);margin-bottom:4px;">${dayLabel}</div>

@@ -69,6 +69,38 @@ function makeHeaders(config, extra = {}) {
 }
 
 // ============================================================
+// 接続テスト（GAS エディタから手動実行して問題を診断）
+// ============================================================
+function testConnection() {
+  const config = getConfig();
+  const url = `${config.lifeOsUrl}/api/export?table=entries&format=json&limit=1`;
+
+  Logger.log('=== 接続テスト ===');
+  Logger.log(`URL: ${url}`);
+  Logger.log(`AUTH_KEY: ${config.authKey ? '設定済み' : '未設定'}`);
+  Logger.log(`CF_ACCESS_CLIENT_ID: "${config.cfClientId}" (${config.cfClientId.length}文字)`);
+  Logger.log(`CF_ACCESS_CLIENT_SECRET: "${config.cfClientSecret.slice(0, 4)}..." (${config.cfClientSecret.length}文字)`);
+
+  const res = UrlFetchApp.fetch(url, {
+    method: 'get',
+    headers: makeHeaders(config),
+    muteHttpExceptions: true,
+    followRedirects: false,   // ← リダイレクト追跡を無効にして生のステータスを見る
+  });
+
+  Logger.log(`HTTP ステータス: ${res.getResponseCode()}`);
+  Logger.log(`レスポンス先頭: ${res.getContentText().slice(0, 200)}`);
+
+  if (res.getResponseCode() === 302) {
+    Logger.log('❌ Cloudflare Access にブロックされています。サービストークンのポリシー設定を確認してください。');
+  } else if (res.getResponseCode() === 401) {
+    Logger.log('❌ AUTH_KEY が間違っています。');
+  } else if (res.getResponseCode() === 200) {
+    Logger.log('✅ 接続成功！');
+  }
+}
+
+// ============================================================
 // メイン: 全テーブルを同期
 // ============================================================
 function syncAll() {
