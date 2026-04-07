@@ -741,13 +741,25 @@ async function loadFitness() {
 
     // スクロール連動：スライド位置に合わせてバーをハイライト
     const slider = document.getElementById('fitnessSlider');
-    slider.addEventListener('scroll', () => {
+    const syncNav = () => {
       const idx = Math.round(slider.scrollLeft / slider.offsetWidth);
-      // barData は古い順なので、スライド idx 0（今日）= barData の末尾
       const barIdx = barData.length - 1 - idx;
       document.getElementById('fitnessNavChart')?.querySelectorAll('.fitness-bar-fill').forEach((bar, i) => {
         bar.classList.toggle('today', i === barIdx);
       });
+    };
+    slider.addEventListener('scroll', syncNav, { passive: true });
+
+    // JS スワイプ補助（CSS scroll-snap が効かない環境向け）
+    let _swipeStartX = 0;
+    slider.addEventListener('pointerdown', e => { _swipeStartX = e.clientX; }, { passive: true });
+    slider.addEventListener('pointerup', e => {
+      const diff = _swipeStartX - e.clientX;
+      if (Math.abs(diff) > 40) {
+        const cur = Math.round(slider.scrollLeft / slider.offsetWidth);
+        const next = diff > 0 ? Math.min(cur + 1, slideData.length - 1) : Math.max(cur - 1, 0);
+        scrollFitnessSlide(next);
+      }
     }, { passive: true });
 
   } catch (_) {}
