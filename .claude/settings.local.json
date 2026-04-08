@@ -130,7 +130,10 @@
       "Bash(curl -sv -H \"Authorization: Bearer hidapia2026\" -H \"CF-Access-Client-Id: test\" -H \"CF-Access-Client-Secret: test\" \"https://life-os-7pj.pages.dev/api/export?table=entries&format=json&limit=1\")",
       "Bash(curl -sv -H \"Authorization: Bearer hidapia2026\" \"https://lifeos.hidapia.com/api/export?table=entries&format=json&limit=1\")",
       "Bash(grep -n \"XSS\\\\|innerHTML\\\\|innerText\\\\|textContent\\\\|dangerouslySetInnerHTML\" /c/Users/ocura/Documents/Dev/life-os/public/*.js /c/Users/ocura/Documents/Dev/life-os/public/*.html)",
-      "Bash(wc -l /c/Users/ocura/Documents/Dev/life-os/functions/api/*.js /c/Users/ocura/Documents/Dev/life-os/public/*.js)"
+      "Bash(wc -l /c/Users/ocura/Documents/Dev/life-os/functions/api/*.js /c/Users/ocura/Documents/Dev/life-os/public/*.js)",
+      "Bash(grep -E \"$\\\\{|\\\\`.*$|concat|interpolate\")",
+      "Bash(ls -la \"C:\\\\Users\\\\ocura\\\\Documents\\\\Dev\\\\project-os\\\\public 2>/dev/null || find C:UsersocuraDocumentsDevproject-ospublic\" -type f)",
+      "Bash(grep -n \"function apiFetch\\\\|const apiFetch\\\\|async function apiFetch\" \"/c/Users/ocura/Documents/Dev/project-os/public\"/*.js)"
     ]
   }
 }
