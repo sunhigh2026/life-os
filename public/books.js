@@ -12,6 +12,8 @@ let currentBookFilter = 'all';
 let currentMediumFilter = 'all';
 let searchTimer = null;
 let editRating = 0;
+let registeredIsbns = new Set();
+let _registeredIsbnCache = new Set();
 
 // ==============================
 // 初期化
@@ -33,6 +35,9 @@ async function apiFetch(path, options = {}) {
     window.location.href = `/login.html?from=${encodeURIComponent(location.pathname + location.search)}`;
     return null;
   }
+  if (res.status === 409) {
+    return { _conflict: true, ...(await res.json().catch(() => ({}))) };
+  }
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.error || `HTTP ${res.status}`);
@@ -47,6 +52,8 @@ async function searchBooks() {
   const q = document.getElementById('searchInput').value.trim();
   if (!q) { showToast('検索キーワードを入力してください'); return; }
 
+  registeredIsbns = new Set();
+
   try {
     const data = await apiFetch(`/api/book-search?q=${encodeURIComponent(q)}`);
     if (data.hint) {
@@ -54,6 +61,7 @@ async function searchBooks() {
       return;
     }
     renderSearchResults(data.books);
+    checkRegisteredIsbns(data.books);
   } catch (e) {
     showToast(`検索エラー: ${e.message}`);
   }
@@ -66,24 +74,38 @@ function renderSearchResults(books) {
 
   if (!books.length) {
     el.innerHTML = '<div class="empty-msg">書籍が見つかりませんでした</div>';
+    window._searchResults = books;
     return;
   }
 
-  el.innerHTML = books.map((b, i) => `
-    <div class="book-card" onclick="selectBook(${i})">
+  el.innerHTML = books.map((b, i) => {
+    const isReg = b.isbn && registeredIsbns.has(b.isbn);
+    return `
+    <div class="book-card${isReg ? ' book-card--registered' : ''}" ${isReg ? '' : `onclick="selectBook(${i})"`}>
       ${b.cover_url
         ? `<img class="book-cover" src="${b.cover_url}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="book-cover-placeholder" style="display:none;">📖</div>`
         : `<div class="book-cover-placeholder">📖</div>`}
       <div class="book-info">
-        <div class="book-title">${escHtml(b.title)}</div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <div class="book-title">${escHtml(b.title)}</div>
+          ${isReg ? '<span class="registered-badge">登録済</span>' : ''}
+        </div>
         <div class="book-author">${escHtml(b.author)}</div>
         ${b.isbn ? `<div style="font-size:11px;color:var(--muted);">ISBN: ${b.isbn}</div>` : ''}
       </div>
     </div>
-  `).join('');
+  `}).join('');
 
   // データをキャッシュ
   window._searchResults = books;
+}
+
+function checkRegisteredIsbns(books) {
+  if (!_registeredIsbnCache.size) return;
+  const matches = books.filter(b => b.isbn && _registeredIsbnCache.has(b.isbn));
+  if (!matches.length) return;
+  matches.forEach(b => registeredIsbns.add(b.isbn));
+  renderSearchResults(window._searchResults);
 }
 
 function selectBook(i) {
@@ -138,8 +160,12 @@ function showRegisterForm() {
   document.getElementById('registerArea').style.display = '';
 
   const b = selectedBook;
-  document.getElementById('formTitle').textContent = b.title;
-  document.getElementById('formAuthor').textContent = b.author;
+  const titleEl = document.getElementById('formTitle');
+  const authorEl = document.getElementById('formAuthor');
+  titleEl.value = b.title;
+  titleEl.readOnly = true;
+  authorEl.value = b.author;
+  authorEl.readOnly = true;
   document.getElementById('formIsbn').textContent = b.isbn ? `ISBN: ${b.isbn}` : '';
 
   const coverEl = document.getElementById('formCover');
@@ -154,6 +180,8 @@ function showRegisterForm() {
   selectStatus('done');
   selectStar(0);
   document.getElementById('noteInput').value = '';
+  document.getElementById('bookTagInput').value = '';
+  document.getElementById('endDateInput').value = '';
 }
 
 function cancelRegister() {
@@ -197,17 +225,21 @@ function selectStar(n) {
 
 async function registerBook() {
   if (!selectedBook) return;
+  const title = document.getElementById('formTitle').value.trim();
+  const author = document.getElementById('formAuthor').value.trim();
+  if (!title) { showToast('タイトルを入力してください'); return; }
+
   const note = document.getElementById('noteInput').value.trim() || null;
   const tag = document.getElementById('bookTagInput').value.trim() || null;
   const end_date = document.getElementById('endDateInput').value || null;
 
   try {
-    await apiFetch('/api/book', {
+    const result = await apiFetch('/api/book', {
       method: 'POST',
       body: JSON.stringify({
         isbn: selectedBook.isbn,
-        title: selectedBook.title,
-        author: selectedBook.author,
+        title,
+        author,
         cover_url: selectedBook.cover_url,
         medium: selectedMedium,
         rating: selectedRating || null,
@@ -217,12 +249,30 @@ async function registerBook() {
         end_date,
       }),
     });
+
+    if (result && result._conflict) {
+      const ex = result.existing;
+      const statusLabel = { want: '読みたい', reading: '読書中', done: '読了' };
+      showToast(`⚠️ 「${escHtml(ex.title)}」はすでに${statusLabel[ex.status] || ex.status}として登録済みです`);
+      if (selectedBook.isbn) registeredIsbns.add(selectedBook.isbn);
+      selectedBook = null;
+      document.getElementById('registerArea').style.display = 'none';
+      if (window._searchResults) {
+        document.getElementById('searchResults').style.display = '';
+        renderSearchResults(window._searchResults);
+      }
+      return;
+    }
+
     const statusMsg = selectedStatus === 'done' ? '読了おつかれさま〜！🎉' : '📚 登録しました！';
     showPiaToast(statusMsg);
+    if (selectedBook.isbn) registeredIsbns.add(selectedBook.isbn);
     selectedBook = null;
     document.getElementById('registerArea').style.display = 'none';
-    document.getElementById('searchResults').style.display = 'none';
-    document.getElementById('searchInput').value = '';
+    if (window._searchResults) {
+      document.getElementById('searchResults').style.display = '';
+      renderSearchResults(window._searchResults);
+    }
     loadRecentBooks();
   } catch (e) {
     showToast(`エラー: ${e.message}`);
@@ -230,16 +280,30 @@ async function registerBook() {
 }
 
 // ==============================
-// 手動登録（書籍が見つからない場合）
+// 手動登録
 // ==============================
-function selectManual() {
-  selectedBook = {
-    isbn: null,
-    title: document.getElementById('searchInput').value,
-    author: '',
-    cover_url: null,
-  };
-  showRegisterForm();
+function showManualEntry() {
+  selectedBook = { isbn: null, title: '', author: '', cover_url: null };
+  document.getElementById('searchResults').style.display = 'none';
+  document.getElementById('registerArea').style.display = '';
+
+  const titleEl = document.getElementById('formTitle');
+  const authorEl = document.getElementById('formAuthor');
+  titleEl.value = document.getElementById('searchInput').value.trim();
+  titleEl.readOnly = false;
+  authorEl.value = '';
+  authorEl.readOnly = false;
+  document.getElementById('formIsbn').textContent = 'ISBN なし（手動入力）';
+  document.getElementById('formCover').innerHTML = '<div class="book-cover-placeholder">📓</div>';
+
+  selectMedium('owned');
+  selectStatus('done');
+  selectStar(0);
+  document.getElementById('noteInput').value = '';
+  document.getElementById('bookTagInput').value = '';
+  document.getElementById('endDateInput').value = '';
+
+  titleEl.focus();
 }
 
 // ==============================
@@ -282,6 +346,7 @@ async function loadRecentBooks() {
 }
 
 function renderRecentBooks(books) {
+  _registeredIsbnCache = new Set(books.map(b => b.isbn).filter(Boolean));
   const el = document.getElementById('recentBooks');
   if (!books.length) {
     const labels = { all: '読書記録', want: '「読みたい」の本', reading: '「読書中」の本', done: '「読了」の本' };

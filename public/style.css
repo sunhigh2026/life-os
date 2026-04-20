@@ -1186,3 +1186,23 @@ input[type="datetime-local"] { flex: 1; }
   cursor: pointer;
   line-height: 1;
 }
+
+/* ===== Books: 登録済バッジ / 重複カード ===== */
+.registered-badge {
+  display: inline-block;
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: var(--radius-chip);
+  background: var(--accent-green);
+  color: #2D3B36;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.book-card--registered {
+  opacity: 0.5;
+  pointer-events: none;
+}
+#formTitle[readonly], #formAuthor[readonly] {
+  background: var(--primary-light);
+  border-color: transparent;
+}

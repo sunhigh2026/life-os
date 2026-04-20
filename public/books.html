@@ -19,6 +19,7 @@
              onkeydown="if(event.key==='Enter')searchBooks()">
       <button class="btn-now" onclick="searchBooks()">検索</button>
       <button class="btn-now" id="scanBtn" onclick="toggleScan()" style="background:#4a9eff;">📷</button>
+      <button class="btn-now" onclick="showManualEntry()" style="background:#9b8ec4;">✏️</button>
     </div>
     <div id="scannerArea" style="display:none;">
       <div id="qr-reader" style="width:100%;border-radius:12px;overflow:hidden;"></div>
@@ -35,8 +36,10 @@
       <div style="display:flex;gap:12px;align-items:flex-start;">
         <div id="formCover"></div>
         <div style="flex:1;">
-          <div style="font-weight:600;font-size:15px;" id="formTitle"></div>
-          <div style="color:var(--muted);font-size:13px;" id="formAuthor"></div>
+          <input type="text" id="formTitle" readonly placeholder="タイトル"
+                 style="font-weight:600;font-size:15px;width:100%;border:1px solid var(--border);border-radius:8px;padding:4px 8px;">
+          <input type="text" id="formAuthor" readonly placeholder="著者"
+                 style="color:var(--muted);font-size:13px;width:100%;border:1px solid var(--border);border-radius:8px;padding:4px 8px;margin-top:4px;">
           <div style="color:var(--muted);font-size:12px;" id="formIsbn"></div>
         </div>
       </div>

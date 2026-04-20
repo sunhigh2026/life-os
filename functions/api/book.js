@@ -84,6 +84,16 @@ export async function onRequestPost({ request, env }) {
   }
 
   const { isbn, title, author, cover_url, medium, rating, status, note, tag, end_date } = body;
+
+  if (isbn) {
+    const existing = await env.DB.prepare(
+      `SELECT id, title, status FROM books WHERE isbn = ? LIMIT 1`
+    ).bind(isbn).first();
+    if (existing) {
+      return json({ error: 'duplicate', message: 'この本はすでに登録されています', existing }, 409);
+    }
+  }
+
   const id = generateId();
   const datetime = new Date().toISOString();
 
