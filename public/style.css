@@ -141,10 +141,11 @@ input[type="datetime-local"] { flex: 1; }
 .text-input-row { position: relative; }
 #textInput {
   padding-right: 44px;
-  resize: none;
+  resize: vertical;
   height: 64px;
   min-height: 64px;
-  overflow: hidden;
+  max-height: 200px;
+  overflow-y: auto;
 }
 
 .btn-voice {
