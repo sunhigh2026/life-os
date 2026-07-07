@@ -467,17 +467,26 @@ function renderTodayEntries(entries) {
     </div>`;
     return;
   }
-  el.innerHTML = entries.map((e) => `
-    <div class="entry-item">
-      <div class="entry-time">${e.datetime.slice(11, 16)}</div>
-      <div class="entry-mood">${e.mood ? MOODS[e.mood] : ''}</div>
-      <div class="entry-content">
-        ${e.tag ? `<div class="entry-tag">#${e.tag}</div>` : ''}
-        <div class="entry-text">${escHtml(e.text || '').replace(/\n/g, '<br>')}</div>
-        ${renderPhotoThumbnail(e.photo_url, e.id)}
+  el.innerHTML = entries.map((e) => {
+    const ed = encodeURIComponent(JSON.stringify(e));
+    return `
+      <div class="entry-item">
+        <div class="entry-time">${e.datetime.slice(11, 16)}</div>
+        <div class="entry-mood">${e.mood ? MOODS[e.mood] : ''}</div>
+        <div class="entry-content">
+          ${e.tag ? `<div class="entry-tag">#${e.tag}</div>` : ''}
+          <div class="entry-text">${escHtml(e.text || '').replace(/\n/g, '<br>')}</div>
+          ${renderPhotoThumbnail(e.photo_url, e.id)}
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;">
+          <button onclick="openEdit(decodeURIComponent('${ed}'))"
+            style="font-size:12px;padding:4px 8px;border:1px solid var(--border);border-radius:8px;background:#f5f5f5;cursor:pointer;" title="編集">✏️</button>
+          <button onclick="deleteEntry('${e.id}', this)"
+            style="font-size:12px;padding:4px 8px;border:1px solid #ffcdd2;border-radius:8px;background:#fff5f5;cursor:pointer;color:#e53935;" title="削除">🗑</button>
+        </div>
       </div>
-    </div>
-  `).join('');
+    `;
+  }).join('');
   loadVisiblePhotos(el);
 }
 
@@ -1045,4 +1054,137 @@ function loadVisiblePhotos(container) {
       loadAuthImage(img, img.dataset.photoKey);
     }
   });
+}
+
+// ==============================
+// 日記編集機能
+// ==============================
+let editMood = null;
+let editPhotoBlob = null;    // 新規選択された画像Blob
+let editPhotoKey = null;     // 既存の写真キー
+let editPhotoChanged = false;
+
+function openEdit(entryOrJson) {
+  const entry = typeof entryOrJson === 'string' ? JSON.parse(entryOrJson) : entryOrJson;
+  editMood = entry.mood;
+  document.getElementById('editId').value = entry.id;
+  document.getElementById('editDatetime').value = entry.datetime.slice(0, 16);
+  document.getElementById('editTag').value = entry.tag || '';
+  document.getElementById('editText').value = entry.text || '';
+  document.querySelectorAll('#editMoodRow .mood-btn').forEach(b => {
+    b.classList.toggle('selected', parseInt(b.dataset.mood) === entry.mood);
+  });
+  setupEditPhoto(entry);
+  document.getElementById('editModal').style.display = 'flex';
+}
+
+function closeEdit() {
+  document.getElementById('editModal').style.display = 'none';
+}
+
+function setEditMood(v) {
+  editMood = v;
+  document.querySelectorAll('#editMoodRow .mood-btn').forEach(b => {
+    b.classList.toggle('selected', parseInt(b.dataset.mood) === v);
+  });
+}
+
+async function saveEdit() {
+  const id = document.getElementById('editId').value;
+  const datetime = document.getElementById('editDatetime').value;
+  const tag = document.getElementById('editTag').value.trim() || null;
+  const text = document.getElementById('editText').value.trim();
+
+  try {
+    await apiFetch('/api/entry', {
+      method: 'PUT',
+      body: JSON.stringify({ id, datetime, mood: editMood, tag, text }),
+    });
+    await savePhotoChanges(id);
+    showToast('✅ 更新しました');
+    closeEdit();
+    loadDashboard();
+  } catch (e) {
+    showToast(`エラー: ${e.message}`);
+  }
+}
+
+async function deleteEntry(id, btn) {
+  if (!confirm('この記録を削除しますか？')) return;
+  btn.disabled = true;
+  try {
+    await apiFetch(`/api/entry?id=${id}`, { method: 'DELETE' });
+    showToast('🗑 削除しました');
+    loadDashboard();
+  } catch (e) {
+    btn.disabled = false;
+    showToast(`エラー: ${e.message}`);
+  }
+}
+
+async function onPhotoSelected(input) {
+  const file = input.files[0];
+  if (!file) return;
+  editPhotoBlob = await processImage(file);
+  editPhotoChanged = true;
+  const preview = document.getElementById('editPhotoPreview');
+  const img = document.getElementById('editPhotoImg');
+  img.src = URL.createObjectURL(editPhotoBlob);
+  preview.style.display = '';
+  document.getElementById('editPhotoLabel').textContent = '写真を変更';
+  document.getElementById('editPhotoDeleteBtn').style.display = '';
+  input.value = '';
+}
+
+function deleteEditPhoto() {
+  editPhotoBlob = null;
+  editPhotoChanged = true;
+  editPhotoKey = null;
+  document.getElementById('editPhotoPreview').style.display = 'none';
+  document.getElementById('editPhotoImg').src = '';
+  document.getElementById('editPhotoLabel').textContent = '写真を追加';
+  document.getElementById('editPhotoDeleteBtn').style.display = 'none';
+}
+
+function setupEditPhoto(entry) {
+  editPhotoBlob = null;
+  editPhotoChanged = false;
+  editPhotoKey = entry.photo_url || null;
+  const preview = document.getElementById('editPhotoPreview');
+  const img = document.getElementById('editPhotoImg');
+  const deleteBtn = document.getElementById('editPhotoDeleteBtn');
+
+  if (editPhotoKey) {
+    preview.style.display = '';
+    deleteBtn.style.display = '';
+    document.getElementById('editPhotoLabel').textContent = '写真を変更';
+    img.src = '';
+    loadAuthImage(img, editPhotoKey);
+  } else {
+    preview.style.display = 'none';
+    deleteBtn.style.display = 'none';
+    document.getElementById('editPhotoLabel').textContent = '写真を追加';
+    img.src = '';
+  }
+}
+
+async function savePhotoChanges(entryId) {
+  if (!editPhotoChanged) return;
+
+  if (editPhotoBlob) {
+    const formData = new FormData();
+    formData.append('photo', editPhotoBlob, 'photo.webp');
+    const res = await fetch(`/api/entry-photo?id=${entryId}`, {
+      method: 'POST',
+      body: formData,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Photo upload failed');
+    }
+  } else {
+    await fetch(`/api/entry-photo?id=${entryId}`, {
+      method: 'DELETE',
+    });
+  }
 }

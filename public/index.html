@@ -198,6 +198,43 @@
   </div>
 </div>
 
+<!-- 日記編集モーダル -->
+<div id="editModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:400;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:16px;padding:20px;width:90%;max-width:480px;display:flex;flex-direction:column;gap:12px;">
+    <div style="font-weight:600;font-size:15px;">日記を編集</div>
+    <input type="hidden" id="editId">
+    <input type="datetime-local" id="editDatetime">
+    <input type="text" id="editTag" placeholder="タグ">
+    <div style="display:flex;gap:6px;" id="editMoodRow">
+      <span style="font-size:12px;color:var(--muted);align-self:center;">気分:</span>
+      <button class="mood-btn" data-mood="1" onclick="setEditMood(1)">😢</button>
+      <button class="mood-btn" data-mood="2" onclick="setEditMood(2)">😞</button>
+      <button class="mood-btn" data-mood="3" onclick="setEditMood(3)">😐</button>
+      <button class="mood-btn" data-mood="4" onclick="setEditMood(4)">🙂</button>
+      <button class="mood-btn" data-mood="5" onclick="setEditMood(5)">😊</button>
+      <button class="mood-btn" data-mood="6" onclick="setEditMood(6)">🤩</button>
+    </div>
+    <textarea id="editText" rows="4" style="resize:vertical;font-family:inherit;font-size:14px;border:1px solid var(--border);border-radius:10px;padding:8px 12px;"></textarea>
+    <!-- 写真セクション -->
+    <div id="editPhotoSection">
+      <div id="editPhotoPreview" style="display:none;">
+        <img id="editPhotoImg" class="edit-photo-preview" alt="写真プレビュー">
+      </div>
+      <div id="editPhotoActions" style="display:flex;gap:8px;align-items:center;">
+        <label class="btn-photo-add" style="font-size:13px;padding:6px 12px;border:1px dashed var(--border);border-radius:10px;cursor:pointer;color:var(--text-sub);display:inline-flex;align-items:center;gap:4px;">
+          <span id="editPhotoLabel">写真を追加</span>
+          <input type="file" id="editPhotoInput" accept="image/*" style="display:none;" onchange="onPhotoSelected(this)">
+        </label>
+        <button id="editPhotoDeleteBtn" onclick="deleteEditPhoto()" style="display:none;font-size:12px;padding:4px 10px;border:1px solid #ffcdd2;border-radius:8px;background:#fff5f5;cursor:pointer;color:#e53935;">写真を削除</button>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn-submit" onclick="saveEdit()">保存</button>
+      <button class="btn-submit" onclick="closeEdit()" style="background:#aaa;">キャンセル</button>
+    </div>
+  </div>
+</div>
+
 <!-- FABボタン -->
 <a href="/settings.html" class="settings-fab" title="設定">⚙️</a>
 <a href="https://docs.google.com/spreadsheets/d/1TJ6Q6tHzxz7fN4PxbMD7fWMVIW6eyoxKYiyeXKgz35w/edit" class="sheets-fab" target="_blank" rel="noopener" title="Google スプレッドシートで見る">📊</a>
