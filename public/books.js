@@ -20,6 +20,7 @@ let _registeredIsbnCache = new Set();
 // ==============================
 document.addEventListener('DOMContentLoaded', () => {
   loadRecentBooks();
+  initAutosave();
 });
 
 // ==============================
@@ -179,15 +180,19 @@ function showRegisterForm() {
   selectMedium('owned');
   selectStatus('done');
   selectStar(0);
-  document.getElementById('noteInput').value = '';
   document.getElementById('bookTagInput').value = '';
   document.getElementById('endDateInput').value = '';
+
+  // 自動保存データの復元
+  const savedNote = localStorage.getItem('autosave_book_note');
+  document.getElementById('noteInput').value = savedNote || '';
 }
 
 function cancelRegister() {
   selectedBook = null;
   document.getElementById('registerArea').style.display = 'none';
   document.getElementById('searchResults').style.display = '';
+  localStorage.removeItem('autosave_book_note');
 }
 
 function selectMedium(m) {
@@ -257,6 +262,7 @@ async function registerBook() {
       if (selectedBook.isbn) registeredIsbns.add(selectedBook.isbn);
       selectedBook = null;
       document.getElementById('registerArea').style.display = 'none';
+      localStorage.removeItem('autosave_book_note');
       if (window._searchResults) {
         document.getElementById('searchResults').style.display = '';
         renderSearchResults(window._searchResults);
@@ -269,6 +275,7 @@ async function registerBook() {
     if (selectedBook.isbn) registeredIsbns.add(selectedBook.isbn);
     selectedBook = null;
     document.getElementById('registerArea').style.display = 'none';
+    localStorage.removeItem('autosave_book_note');
     if (window._searchResults) {
       document.getElementById('searchResults').style.display = '';
       renderSearchResults(window._searchResults);
@@ -299,9 +306,12 @@ function showManualEntry() {
   selectMedium('owned');
   selectStatus('done');
   selectStar(0);
-  document.getElementById('noteInput').value = '';
   document.getElementById('bookTagInput').value = '';
   document.getElementById('endDateInput').value = '';
+
+  // 自動保存データの復元
+  const savedNote = localStorage.getItem('autosave_book_note');
+  document.getElementById('noteInput').value = savedNote || '';
 
   titleEl.focus();
 }
@@ -406,7 +416,8 @@ function openBookEdit(bookJson) {
     ? `<img class="book-cover" src="${b.cover_url}" alt="">`
     : `<div class="book-cover-placeholder">📖</div>`;
 
-  document.getElementById('editBookNote').value = b.note || '';
+  const savedEditNote = localStorage.getItem(`autosave_book_edit_note_${b.id}`);
+  document.getElementById('editBookNote').value = (savedEditNote !== null) ? savedEditNote : (b.note || '');
   document.getElementById('editEndDate').value = b.end_date || '';
   document.getElementById('editBookTag').value = b.tag || '';
   selectEditMedium(b.medium || 'owned');
@@ -417,6 +428,8 @@ function openBookEdit(bookJson) {
 }
 
 function closeBookEdit() {
+  const id = document.getElementById('editBookId').value;
+  localStorage.removeItem(`autosave_book_edit_note_${id}`);
   document.getElementById('bookEditModal').style.display = 'none';
 }
 
@@ -445,6 +458,7 @@ async function deleteBook() {
   try {
     await apiFetch(`/api/book?id=${id}`, { method: 'DELETE' });
     showToast('削除しました');
+    localStorage.removeItem(`autosave_book_edit_note_${id}`);
     closeBookEdit();
     loadRecentBooks();
   } catch (e) {
@@ -467,6 +481,7 @@ async function saveBookEdit() {
       body: JSON.stringify({ id, status, medium, rating, note, tag, end_date }),
     });
     showToast('✅ 更新しました');
+    localStorage.removeItem(`autosave_book_edit_note_${id}`);
     closeBookEdit();
     loadRecentBooks();
   } catch (e) {
@@ -525,4 +540,23 @@ function showPiaToast(msg) {
 
 function escHtml(str) {
   return (str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function initAutosave() {
+  const noteInput = document.getElementById('noteInput');
+  if (noteInput) {
+    noteInput.addEventListener('input', (e) => {
+      localStorage.setItem('autosave_book_note', e.target.value);
+    });
+  }
+
+  const editBookNote = document.getElementById('editBookNote');
+  if (editBookNote) {
+    editBookNote.addEventListener('input', (e) => {
+      const id = document.getElementById('editBookId').value;
+      if (id) {
+        localStorage.setItem(`autosave_book_edit_note_${id}`, e.target.value);
+      }
+    });
+  }
 }

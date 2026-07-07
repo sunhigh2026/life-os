@@ -200,7 +200,7 @@
 
 <!-- 日記編集モーダル -->
 <div id="editModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:400;align-items:center;justify-content:center;">
-  <div style="background:#fff;border-radius:16px;padding:20px;width:90%;max-width:480px;display:flex;flex-direction:column;gap:12px;">
+  <div class="diary-edit-modal-content">
     <div style="font-weight:600;font-size:15px;">日記を編集</div>
     <input type="hidden" id="editId">
     <input type="datetime-local" id="editDatetime">
@@ -214,7 +214,7 @@
       <button class="mood-btn" data-mood="5" onclick="setEditMood(5)">😊</button>
       <button class="mood-btn" data-mood="6" onclick="setEditMood(6)">🤩</button>
     </div>
-    <textarea id="editText" rows="4" style="resize:vertical;font-family:inherit;font-size:14px;border:1px solid var(--border);border-radius:10px;padding:8px 12px;"></textarea>
+    <textarea id="editText" class="diary-edit-modal-textarea"></textarea>
     <!-- 写真セクション -->
     <div id="editPhotoSection">
       <div id="editPhotoPreview" style="display:none;">

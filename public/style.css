@@ -1206,3 +1206,66 @@ input[type="datetime-local"] { flex: 1; }
   background: var(--primary-light);
   border-color: transparent;
 }
+
+/* ===== Responsive Modal Adjustments ===== */
+.book-edit-modal-content {
+  background: #fff;
+  border-radius: 16px;
+  padding: 20px;
+  width: 90%;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 85dvh;
+  overflow-y: auto;
+}
+.book-edit-modal-textarea {
+  width: 100%;
+  resize: vertical;
+  font-family: inherit;
+  font-size: 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px 12px;
+  min-height: 80px;
+}
+
+.diary-edit-modal-content {
+  background: #fff;
+  border-radius: 16px;
+  padding: 20px;
+  width: 90%;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.diary-edit-modal-textarea {
+  resize: vertical;
+  font-family: inherit;
+  font-size: 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px 12px;
+  min-height: 100px;
+}
+
+@media (min-width: 768px) {
+  .book-edit-modal-content {
+    max-width: 640px;
+    padding: 28px;
+  }
+  .book-edit-modal-textarea {
+    min-height: 180px;
+    font-size: 15px;
+  }
+  .diary-edit-modal-content {
+    max-width: 640px;
+    padding: 28px;
+  }
+  .diary-edit-modal-textarea {
+    min-height: 200px;
+    font-size: 15px;
+  }
+}
