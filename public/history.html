@@ -161,33 +161,37 @@ function renderEntries(entries) {
     groups[d].push(e);
   });
 
-  el.innerHTML = Object.entries(groups).map(([date, items]) => `
-    <div class="section">
-      <div class="section-header">${date}（${items.length}件）</div>
-      <div class="section-body">
-        ${items.map(e => `
-          <div class="entry-item">
-            <div class="entry-time">${e.datetime.slice(11, 16)}</div>
-            <div class="entry-mood">${e.mood ? MOODS[e.mood] : ''}</div>
-            <div class="entry-content">
-              ${e.tag ? `<div class="entry-tag">#${e.tag}</div>` : ''}
-              <div class="entry-text">${escHtml(e.text || '').replace(/\n/g, '<br>')}</div>
-              ${e.photo_url ? `<img class="entry-photo-thumb" data-photo-key="${escHtml(e.photo_url)}" onclick="openLightbox('${escHtml(e.photo_url)}')" alt="写真">` : ''}
+  const weekDays = ['日', '月', '火', '水', '木', '金', '土'];
+  el.innerHTML = Object.entries(groups).map(([date, items]) => {
+    const dayOfWeek = weekDays[new Date(date.replace(/-/g, '/')).getDay()];
+    return `
+      <div class="section">
+        <div class="section-header">${date} (${dayOfWeek})（${items.length}件）</div>
+        <div class="section-body">
+          ${items.map(e => `
+            <div class="entry-item">
+              <div class="entry-time">${e.datetime.slice(11, 16)}</div>
+              <div class="entry-mood">${e.mood ? MOODS[e.mood] : ''}</div>
+              <div class="entry-content">
+                ${e.tag ? `<div class="entry-tag">#${e.tag}</div>` : ''}
+                <div class="entry-text">${escHtml(e.text || '').replace(/\n/g, '<br>')}</div>
+                ${e.photo_url ? `<img class="entry-photo-thumb" data-photo-key="${escHtml(e.photo_url)}" onclick="openLightbox('${escHtml(e.photo_url)}')" alt="写真">` : ''}
+              </div>
+              <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;">
+                <button onclick="shareToX(${JSON.stringify(e).replace(/"/g, '&quot;')})" class="share-x-btn" title="Xに共有">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                </button>
+                <button onclick="openEdit(${JSON.stringify(e).replace(/"/g, '&quot;')})"
+                  style="font-size:12px;padding:4px 8px;border:1px solid var(--border);border-radius:8px;background:#f5f5f5;cursor:pointer;">✏️</button>
+                <button onclick="deleteEntry('${e.id}', this)"
+                  style="font-size:12px;padding:4px 8px;border:1px solid #ffcdd2;border-radius:8px;background:#fff5f5;cursor:pointer;color:#e53935;">🗑</button>
+              </div>
             </div>
-            <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;">
-              <button onclick="shareToX(${JSON.stringify(e).replace(/"/g, '&quot;')})" class="share-x-btn" title="Xに共有">
-                <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
-              </button>
-              <button onclick="openEdit(${JSON.stringify(e).replace(/"/g, '&quot;')})"
-                style="font-size:12px;padding:4px 8px;border:1px solid var(--border);border-radius:8px;background:#f5f5f5;cursor:pointer;">✏️</button>
-              <button onclick="deleteEntry('${e.id}', this)"
-                style="font-size:12px;padding:4px 8px;border:1px solid #ffcdd2;border-radius:8px;background:#fff5f5;cursor:pointer;color:#e53935;">🗑</button>
-            </div>
-          </div>
-        `).join('')}
+          `).join('')}
+        </div>
       </div>
-    </div>
-  `).join('');
+    `;
+  }).join('');
   loadVisiblePhotos(el);
 }
 
