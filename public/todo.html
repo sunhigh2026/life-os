@@ -205,7 +205,14 @@ function render() {
   const topLevel = allTodos.filter(t => !t.parent_id);
 
   if (currentView === 'done') {
-    const done = topLevel.filter(t => t.status === 'done').slice(0, 20);
+    const done = topLevel
+      .filter(t => t.status === 'done')
+      .sort((a, b) => {
+        const dateA = a.done_at ? new Date(a.done_at) : new Date(0);
+        const dateB = b.done_at ? new Date(b.done_at) : new Date(0);
+        return dateB - dateA; // 新しい順
+      })
+      .slice(0, 20);
     if (!done.length) { el.innerHTML = '<div class="empty-msg" style="padding:32px 0;">完了したToDoはありません</div>'; return; }
     el.innerHTML = `<div class="section"><div class="section-body">${done.map(t => renderTodoItem(t, today, true, subtaskMap)).join('')}</div></div>`;
     return;
@@ -308,7 +315,14 @@ function render() {
   }
 
   // 最近の完了
-  const recentDone = topLevel.filter(t => t.status === 'done').slice(0, 5);
+  const recentDone = topLevel
+    .filter(t => t.status === 'done')
+    .sort((a, b) => {
+      const dateA = a.done_at ? new Date(a.done_at) : new Date(0);
+      const dateB = b.done_at ? new Date(b.done_at) : new Date(0);
+      return dateB - dateA; // 新しい順
+    })
+    .slice(0, 5);
   if (recentDone.length) {
     html += `<div class="group-header">✅ 最近の完了</div>`;
     html += recentDone.map(t => renderTodoItem(t, today, true, subtaskMap)).join('');
