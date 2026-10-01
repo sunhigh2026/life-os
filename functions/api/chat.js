@@ -1,4 +1,4 @@
-const WORKERS_AI_MODEL = '@cf/meta/llama-3.1-8b-instruct';
+const WORKERS_AI_MODEL = '@cf/meta/llama-3.1-8b-instruct-fp8';
 const AI_GATEWAY_ID = 'life-os';
 
 function json(data, status = 200) {
