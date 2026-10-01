@@ -35,8 +35,17 @@ async function sendMessage() {
       return;
     }
 
-    const data = await res.json();
+    const text = await res.text();
     removeMessage(thinkingId);
+
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (_) {
+      appendMessage('ai', `通信エラー (HTTP ${res.status}): サーバーの応答を解析できませんでした。`);
+      scrollToBottom();
+      return;
+    }
 
     if (!res.ok) {
       appendMessage('ai', `エラー: ${data.error || 'Unknown error'}${data.detail ? '\n(' + data.detail + ')' : ''}`);
