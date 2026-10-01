@@ -1,4 +1,5 @@
-import { callGemini } from './_gemini.js';
+const WORKERS_AI_MODEL = '@cf/qwen/qwen2.5-7b-instruct';
+const AI_GATEWAY_ID = 'life-os';
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -121,10 +122,9 @@ export async function onRequestPost({ request, env }) {
   const body = await request.json();
   const { message, session_id } = body;
   if (!message) return json({ error: 'message required' }, 400);
-  if (!env.GEMINI_API_KEY) return json({ error: 'GEMINI_API_KEY not configured' }, 500);
+  if (!env.AI) return json({ error: 'Workers AI binding (env.AI) not configured' }, 500);
 
-  // モデル選択: クライアント指定 > キーワード判定 > デフォルト
-  const model = body.mode === 'pro' || detectHeavyTask(message) ? 'pro' : 'flash';
+  const model = WORKERS_AI_MODEL;
 
   const today = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
@@ -300,8 +300,8 @@ ${menstrualDates.length ? menstrualDates.map(d => d.date).join(', ') : '記録�
       ).bind(session_id).all();
       // DESC で取得しているので反転して時系列順に
       previousMessages = history.reverse().map(h => ({
-        role: h.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: h.content }],
+        role: h.role === 'assistant' ? 'assistant' : 'user',
+        content: h.content,
       }));
     } catch (_) {}
   }
@@ -316,23 +316,27 @@ ${menstrualDates.length ? menstrualDates.map(d => d.date).join(', ') : '記録�
     } catch (_) {}
   }
 
-  // Gemini contents 構築（マルチターン形式）
-  const contents = [
-    { role: 'user', parts: [{ text: `${systemPrompt}\n\n【コンテキスト】\n${contextText}` }] },
-    { role: 'model', parts: [{ text: 'わかったよ！なんでも聞いてね🐾' }] },
+  // Workers AI messages 構築
+  const messages = [
+    { role: 'system', content: `${systemPrompt}\n\n【コンテキスト】\n${contextText}` },
     ...previousMessages,
-    { role: 'user', parts: [{ text: message }] },
+    { role: 'user', content: message },
   ];
 
   try {
-    const replyText = await callGemini({
-      apiKey: env.GEMINI_API_KEY,
-      model,
-      contents,
-      generationConfig: { maxOutputTokens: 1024, temperature: 0.7 },
-    });
+    const aiRes = await env.AI.run(
+      WORKERS_AI_MODEL,
+      {
+        messages,
+        max_tokens: 1024,
+        temperature: 0.7,
+      },
+      {
+        gateway: { id: AI_GATEWAY_ID },
+      }
+    );
 
-    const reply = replyText || 'うまく答えられなかったよ…ごめんね！';
+    const reply = aiRes?.response || 'うまく答えられなかったよ…ごめんね！';
 
     // AIの応答をDBに保存
     if (session_id) {
@@ -359,6 +363,6 @@ ${menstrualDates.length ? menstrualDates.map(d => d.date).join(', ') : '記録�
 
     return json({ reply, charName: settings['char_name'] || null, model });
   } catch (e) {
-    return json({ error: 'Gemini API error', detail: e.message }, 502);
+    return json({ error: 'Workers AI error', detail: e.message }, 502);
   }
 }
